@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Sparkles, Loader2, Target, Globe, FileText, CheckCircle2, ChevronRight, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, Target, Globe, FileText, CheckCircle2, ChevronRight, AlertCircle, Zap, Search } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
-import { Container, Section } from "../components/ui";
+import { Container, Section, Card, Button, Input, Badge, Alert, HeroSection } from "../components/ui";
 
 export default function Strategy() {
   const [topic, setTopic] = useState("");
@@ -31,134 +31,151 @@ export default function Strategy() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-secondary)] text-[var(--text-primary)]">
+    <div className="min-h-screen bg-surface-secondary text-text-primary relative pb-16">
       <div className="mesh-grid fixed inset-0 pointer-events-none z-0 opacity-50" />
       
-      <main className="relative z-10 pb-16">
-        <Container className="pt-8">
-          <div className="flex flex-col gap-2 mb-8">
-            <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
-              AI SEO Strategy Orchestrator
-            </h1>
-            <p className="text-[var(--text-secondary)] text-lg max-w-2xl">
-              Launch multiple AI agents to research keywords, analyze competitors, and generate a complete content roadmap.
-            </p>
+      <HeroSection
+        title="SEO Strategy Orchestrator"
+        subtitle="Deploy an autonomous swarm of AI agents to perform deep market research, competitive auditing, and multi-channel content roadmapping."
+      />
+
+      <Container className="py-8 relative z-10">
+        <Card variant="elevated" className="p-8 bg-surface-primary max-w-4xl mx-auto border-t-4 border-t-slb-blue-500 mb-10">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-slb-blue-500/10 rounded-xl text-slb-blue-500">
+              <Zap size={24} className="animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold font-display text-text-primary">Launch Swarm Intelligence</h2>
+              <p className="text-sm text-text-muted mt-1">Specify your target niche and optional domain to begin the deep-dive analysis.</p>
+            </div>
           </div>
 
-          <Section className="slb-card rounded-xl p-6 md:p-8 mb-8 animate-fadeInUp">
-            <form onSubmit={runStrategy} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                    Main Topic / Keyword
-                  </label>
-                  <input
-                    type="text"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g., SEO for AI SaaS Startups"
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-light)] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                    Target URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://yourwebsite.com/page"
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-light)] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all"
-                  />
-                </div>
-              </div>
+          <form onSubmit={runStrategy} className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-8">
+              <Input
+                label="Primary Focus Keyword"
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g. enterprise cloud security"
+                required
+                startIcon={Target}
+                helperText="The main topic your strategy will revolve around."
+              />
+              <Input
+                label="Target Domain (Optional)"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://yourwebsite.com"
+                startIcon={Globe}
+                helperText="If provided, we will audit your site against competitors."
+              />
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !topic}
-                className="slb-btn slb-btn-primary w-full md:w-auto px-8 py-3 flex items-center justify-center gap-2 font-bold shadow-xl shadow-blue-500/10"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Orchestrating Agents...
-                  </>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="lg"
+              loading={loading}
+              disabled={!topic}
+              startIcon={Sparkles}
+              className="shadow-lg shadow-slb-blue-500/20"
+            >
+              {loading ? "Orchestrating Multi-Agent Swarm..." : "Execute Global SEO Strategy"}
+            </Button>
+          </form>
+        </Card>
+
+        {error && (
+          <Alert variant="error" title="Strategy Execution Failed" className="max-w-4xl mx-auto mb-10" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        {result && (
+          <div className="space-y-10 animate-fadeInUp">
+            {/* Research Summary Cards */}
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card variant="outline" className="p-6 bg-surface-primary border-l-4 border-l-slb-blue-500 hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-slb-blue-500/10 rounded-lg text-slb-blue-500">
+                    <Search size={18} />
+                  </div>
+                  <h3 className="font-bold text-sm">Keyword Analysis</h3>
+                </div>
+                <div className="text-xs text-text-secondary line-clamp-4 leading-relaxed italic">
+                  <ReactMarkdown>{result.research.keywords.keywords_report}</ReactMarkdown>
+                </div>
+                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-slb-blue-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                  Explore Keywords →
+                </Button>
+              </Card>
+
+              <Card variant="outline" className="p-6 bg-surface-primary border-l-4 border-l-purple-500 hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+                    <Target size={18} />
+                  </div>
+                  <h3 className="font-bold text-sm">Competitor Gaps</h3>
+                </div>
+                <div className="text-xs text-text-secondary line-clamp-4 leading-relaxed italic">
+                  <ReactMarkdown>{result.research.competitors.insights}</ReactMarkdown>
+                </div>
+                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-purple-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                  Analyze Rivals →
+                </Button>
+              </Card>
+
+              <Card variant="outline" className="p-6 bg-surface-primary border-l-4 border-l-green-500 hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-green-500/10 rounded-lg text-green-500">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <h3 className="font-bold text-sm">Site Audit</h3>
+                </div>
+                {result.research.site_audit ? (
+                  <div>
+                    <div className="flex items-end gap-2 mb-2">
+                      <span className="text-3xl font-bold font-display text-text-primary">{result.research.site_audit.seo_score}</span>
+                      <span className="text-xs text-text-muted mb-1.5">/ 100</span>
+                    </div>
+                    <Badge variant="success" size="sm">Verification Complete</Badge>
+                  </div>
                 ) : (
-                  <>
-                    <Sparkles className="h-5 w-5" />
-                    Generate Full Strategy
-                  </>
+                  <p className="text-xs text-text-muted italic leading-relaxed">No URL provided for automated crawl analysis.</p>
                 )}
-              </button>
-            </form>
-          </Section>
-
-          {error && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3 mb-8 animate-shake">
-              <AlertCircle size={20} />
-              <p>{error}</p>
+                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-green-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                  View Full Audit →
+                </Button>
+              </Card>
             </div>
-          )}
 
-          {result && (
-            <div className="space-y-8 animate-fadeInUp">
-              {/* Research Summary Cards */}
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="slb-card p-6 rounded-xl border-l-4 border-blue-500">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Globe className="text-blue-500" />
-                    <h3 className="font-bold">Keyword Research</h3>
+            {/* Main Content Output */}
+            <Card variant="elevated" className="overflow-hidden bg-surface-primary p-0 border-t-4 border-t-slb-blue-500 shadow-2xl">
+              <div className="bg-surface-secondary/50 px-10 py-6 border-b border-border-light flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-slb-blue-500/10 rounded-xl text-slb-blue-500">
+                    <FileText size={20} />
                   </div>
-                  <div className="text-sm text-[var(--text-secondary)] line-clamp-3 overflow-hidden">
-                    <ReactMarkdown>{result.research.keywords.keywords_report}</ReactMarkdown>
+                  <div>
+                    <span className="font-bold uppercase tracking-widest text-[10px] text-text-muted">Master Intelligence Report</span>
+                    <h3 className="font-bold text-lg">Omnichannel Content Strategy</h3>
                   </div>
-                  <button className="mt-4 text-xs font-bold text-blue-500 uppercase tracking-widest hover:underline">View Details →</button>
                 </div>
-
-                <div className="slb-card p-6 rounded-xl border-l-4 border-purple-500">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Target className="text-purple-500" />
-                    <h3 className="font-bold">Competitor Gaps</h3>
-                  </div>
-                  <div className="text-sm text-[var(--text-secondary)] line-clamp-3 overflow-hidden">
-                    <ReactMarkdown>{result.research.competitors.insights}</ReactMarkdown>
-                  </div>
-                  <button className="mt-4 text-xs font-bold text-purple-500 uppercase tracking-widest hover:underline">View Details →</button>
-                </div>
-
-                <div className="slb-card p-6 rounded-xl border-l-4 border-green-500">
-                  <div className="flex items-center gap-3 mb-4">
-                    <CheckCircle2 className="text-green-500" />
-                    <h3 className="font-bold">Site Audit</h3>
-                  </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    {result.research.site_audit ? `Score: ${result.research.site_audit.seo_score}/100` : "No URL provided for audit."}
-                  </p>
-                  <button className="mt-4 text-xs font-bold text-green-500 uppercase tracking-widest hover:underline">View Details →</button>
-                </div>
+                <Badge variant="success" size="lg" className="font-bold px-4">READY</Badge>
               </div>
-
-              {/* Main Content Output */}
-              <div className="slb-card rounded-2xl overflow-hidden border border-[var(--border-light)] shadow-2xl bg-[var(--bg-primary)]">
-                <div className="bg-[var(--bg-tertiary)] px-8 py-4 border-b border-[var(--border-light)] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="text-[var(--slb-blue-500)]" />
-                    <span className="font-bold uppercase tracking-widest text-sm">Generated Content Strategy</span>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-500 font-bold">READY</span>
-                </div>
-                <div className="p-8 md:p-12 prose prose-invert max-w-none">
-                  <ReactMarkdown className="markdown-content">
-                    {result.output.content}
-                  </ReactMarkdown>
-                </div>
+              <div className="p-10 md:p-14 prose prose-slate dark:prose-invert max-w-none bg-surface-primary">
+                <ReactMarkdown className="markdown-content font-sans leading-relaxed">
+                  {result.output.content}
+                </ReactMarkdown>
               </div>
-            </div>
-          )}
-        </Container>
-      </main>
+            </Card>
+          </div>
+        )}
+      </Container>
     </div>
   );
 }

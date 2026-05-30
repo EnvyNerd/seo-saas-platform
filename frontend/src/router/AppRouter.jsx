@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
-import Sidebar from "../components/Sidebar";
+import MainLayout from "../layouts/MainLayout";
+import PageTransition from "../components/PageTransition";
 import Dashboard from "../pages/DashboardNew";
 import SEOAudit from "../pages/SEOAudit";
 import KeywordGenerator from "../pages/KeywordGenerator";
@@ -32,23 +33,83 @@ function AppRouter() {
           
           <Route path="/*" element={
             <ProtectedRoute>
-              <div className="flex h-screen bg-slate-950">
-                <Sidebar />
-                <main className="flex-1 overflow-auto">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/strategy" element={<Strategy />} />
-                    <Route path="/seo-audit" element={<SEOAudit />} />
-                    <Route path="/keywords" element={<KeywordGenerator />} />
-                    <Route path="/content" element={<ContentGenerator />} />
-                    <Route path="/competitors" element={<Competitors />} />
-                    <Route path="/chat" element={<ChatAssistant />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/analytics" element={<RealtimeAnalytics />} />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </main>
-              </div>
+              <MainLayout>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <PageTransition>
+                        <Dashboard />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/strategy"
+                    element={
+                      <PageTransition>
+                        <Strategy />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/seo-audit"
+                    element={
+                      <PageTransition>
+                        <SEOAudit />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/keywords"
+                    element={
+                      <PageTransition>
+                        <KeywordGenerator />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/content"
+                    element={
+                      <PageTransition>
+                        <ContentGenerator />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/competitors"
+                    element={
+                      <PageTransition>
+                        <Competitors />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/chat"
+                    element={
+                      <PageTransition>
+                        <ChatAssistant />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <PageTransition>
+                        <Settings />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/analytics"
+                    element={
+                      <PageTransition>
+                        <RealtimeAnalytics />
+                      </PageTransition>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </MainLayout>
             </ProtectedRoute>
           } />
         </Routes>
@@ -56,6 +117,5 @@ function AppRouter() {
     </AuthProvider>
   );
 }
-
 
 export default AppRouter;

@@ -2,6 +2,7 @@ from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter
 from app.services.seo_audit_service import audit_website
+from app.services.lighthouse_service import get_lighthouse_metrics
 
 router = APIRouter()
 
@@ -9,6 +10,12 @@ router = APIRouter()
 @router.get("/audit")
 def seo_audit(url: str):
     return audit_website(url)
+
+
+@router.get("/lighthouse")
+def seo_lighthouse(url: str, strategy: str = "desktop"):
+    """Fetch Lighthouse metrics for a URL."""
+    return get_lighthouse_metrics(url, strategy)
 
 
 class BatchAuditRequest(BaseModel):

@@ -3,6 +3,7 @@ import asyncio
 import json
 import sys
 import os
+import time
 from dotenv import load_dotenv, set_key
 from rich.console import Console
 from rich.table import Table
@@ -47,6 +48,305 @@ def export_result(data, filename, format='json'):
 def cli():
     """🚀 SEO SaaS Platform CLI Tool"""
     pass
+
+from app.core.database import engine, Base, AsyncSessionLocal
+from app.models.project import Project
+from app.models.seo_report import SEOReport
+from app.models.keywords import KeywordResearch
+from app.models.competitor import CompetitorAnalysis
+from sqlalchemy import select, delete, func
+
+# --- DB Command Group ---
+
+@cli.group()
+def db():
+    """Manage platform database state."""
+    pass
+
+@db.command()
+def init():
+    """Initialize the database schema."""
+    import asyncio
+    from init_db_async import init_db
+    with console.status("[bold green]Initializing database tables...", spinner="point"):
+        asyncio.run(init_db())
+    console.print("[bold green]✅ Database schema created successfully.[/bold green]")
+
+@db.command()
+def reset():
+    """Wipe all data and reset the database."""
+    import asyncio
+    async def reset_logic():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    
+    if click.confirm("⚠️ This will DELETE ALL DATA. Are you sure?"):
+        asyncio.run(reset_logic())
+        console.print("[bold red]Database has been reset.[/bold red]")
+
+# --- Project Command Group ---
+
+@cli.group()
+def project():
+    """Manage SEO projects."""
+    pass
+
+@project.command(name='create')
+@click.argument('name')
+@click.option('--domain', default="N/A", help="Target domain for the project.")
+def project_create(name, domain):
+    """Create a new SEO project."""
+    import asyncio
+    async def create():
+        async with AsyncSessionLocal() as session:
+            new_project = Project(name=name, domain=domain)
+            session.add(new_project)
+            await session.commit()
+            return new_project.id
+            
+    pid = asyncio.run(create())
+    console.print(f"[bold green]✅ Project '{name}' created with ID: {pid}[/bold green]")
+
+@project.command(name='list')
+def project_list():
+    """List all active projects."""
+    import asyncio
+    async def fetch():
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(Project))
+            return result.scalars().all()
+            
+    projects = asyncio.run(fetch())
+    table = Table(title="SEO Projects", box=box.ROUNDED)
+    table.add_column("ID", style="dim")
+    table.add_column("Name", style="cyan")
+    table.add_column("Created", style="dim")
+    
+    for p in projects:
+        table.add_row(str(p.id), p.name, p.created_at.strftime("%Y-%m-%d"))
+    console.print(table)
+
+@project.command(name='delete')
+@click.argument('project_id', type=int)
+def project_delete(project_id):
+    """Delete a project by ID."""
+    import asyncio
+    async def delete_p():
+        async with AsyncSessionLocal() as session:
+            await session.execute(delete(Project).where(Project.id == project_id))
+            await session.commit()
+            
+    if click.confirm(f"Delete project {project_id}?"):
+        asyncio.run(delete_p())
+        console.print(f"[bold red]Project {project_id} deleted.[/bold red]")
+
+@project.command(name='view')
+@click.argument('project_id', type=int)
+def project_view(project_id):
+    """View details and history of an SEO project."""
+    import asyncio
+    async def fetch_details():
+        async with AsyncSessionLocal() as session:
+            proj = await session.get(Project, project_id)
+            if not proj:
+                return None
+            
+            # Fetch reports
+            r_res = await session.execute(select(SEOReport).where(SEOReport.project_id == project_id).order_by(SEOReport.created_at.desc()))
+            reports = r_res.scalars().all()
+            
+            # Fetch keyword researches
+            k_res = await session.execute(select(KeywordResearch).where(KeywordResearch.project_id == project_id).order_by(KeywordResearch.created_at.desc()))
+            keywords = k_res.scalars().all()
+            
+            # Fetch competitor analyses
+            c_res = await session.execute(select(CompetitorAnalysis).where(CompetitorAnalysis.project_id == project_id).order_by(CompetitorAnalysis.created_at.desc()))
+            competitors = c_res.scalars().all()
+            
+            return {
+                "project": proj,
+                "reports": reports,
+                "keywords": keywords,
+                "competitors": competitors
+            }
+
+    data = asyncio.run(fetch_details())
+    if not data:
+        console.print(f"[bold red]Error: Project with ID {project_id} not found.[/bold red]")
+        return
+
+    p = data["project"]
+    console.print(Panel(
+        f"[bold cyan]Project Name:[/bold cyan] {p.name}\n"
+        f"[bold cyan]Target Domain:[/bold cyan] {p.domain}\n"
+        f"[bold cyan]Created At:[/bold cyan] {p.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
+        title=f"Project Profile (ID: {p.id})",
+        border_style="blue"
+    ))
+
+    # SEO Reports Table
+    reports_table = Table(title="Audit History (SEO Reports)", box=box.ROUNDED)
+    reports_table.add_column("Report ID", style="dim")
+    reports_table.add_column("URL", style="blue")
+    reports_table.add_column("SEO Score", style="bold")
+    reports_table.add_column("Date", style="dim")
+    
+    for r in data["reports"]:
+        score = r.seo_score
+        color = "green" if score > 80 else "yellow" if score > 50 else "red"
+        reports_table.add_row(str(r.id), r.url, f"[{color}]{score}/100[/{color}]", r.created_at.strftime("%Y-%m-%d %H:%M"))
+    
+    # Keywords Table
+    keywords_table = Table(title="Keyword Strategies", box=box.ROUNDED)
+    keywords_table.add_column("ID", style="dim")
+    keywords_table.add_column("Topic", style="cyan")
+    keywords_table.add_column("Date", style="dim")
+    
+    for k in data["keywords"]:
+        keywords_table.add_row(str(k.id), k.topic, k.created_at.strftime("%Y-%m-%d %H:%M"))
+
+    # Competitor Gaps Table
+    competitors_table = Table(title="Competitor Analyses", box=box.ROUNDED)
+    competitors_table.add_column("ID", style="dim")
+    competitors_table.add_column("Keyword/Topic", style="magenta")
+    competitors_table.add_column("Date", style="dim")
+    
+    for c in data["competitors"]:
+        competitors_table.add_row(str(c.id), c.keyword, c.created_at.strftime("%Y-%m-%d %H:%M"))
+
+    console.print(reports_table)
+    console.print(keywords_table)
+    console.print(competitors_table)
+
+
+# --- Report Command Group ---
+
+@cli.group()
+def report():
+    """Manage saved SEO reports."""
+    pass
+
+@report.command(name='list')
+def report_list():
+    """List all saved SEO reports."""
+    import asyncio
+    async def fetch_reports():
+        async with AsyncSessionLocal() as session:
+            stmt = select(SEOReport, Project.name).join(Project, SEOReport.project_id == Project.id).order_by(SEOReport.created_at.desc())
+            res = await session.execute(stmt)
+            return res.all()
+            
+    reports = asyncio.run(fetch_reports())
+    
+    table = Table(title="Saved SEO Reports", box=box.ROUNDED)
+    table.add_column("Report ID", style="dim")
+    table.add_column("Project", style="cyan")
+    table.add_column("URL", style="blue")
+    table.add_column("SEO Score", style="bold")
+    table.add_column("Created At", style="dim")
+    
+    for r, proj_name in reports:
+        score = r.seo_score
+        color = "green" if score > 80 else "yellow" if score > 50 else "red"
+        table.add_row(
+            str(r.id),
+            proj_name,
+            r.url,
+            f"[{color}]{score}/100[/{color}]",
+            r.created_at.strftime("%Y-%m-%d %H:%M")
+        )
+    console.print(table)
+
+@report.command(name='view')
+@click.argument('report_id', type=int)
+def report_view(report_id):
+    """View details of a saved SEO report."""
+    import asyncio
+    async def fetch_report():
+        async with AsyncSessionLocal() as session:
+            stmt = select(SEOReport, Project.name).join(Project, SEOReport.project_id == Project.id).where(SEOReport.id == report_id)
+            res = await session.execute(stmt)
+            return res.first()
+            
+    res = asyncio.run(fetch_report())
+    if not res:
+        console.print(f"[bold red]Error: Report with ID {report_id} not found.[/bold red]")
+        return
+        
+    r, proj_name = res
+    console.print(Rule(f"SEO REPORT DETAIL: ID {r.id}", style="bold blue"))
+    
+    info_table = Table(show_header=False, box=box.SIMPLE)
+    info_table.add_row("Project Name:", proj_name)
+    info_table.add_row("Target URL:", r.url)
+    score_color = "green" if r.seo_score > 80 else "yellow" if r.seo_score > 50 else "red"
+    info_table.add_row("SEO Score:", f"[{score_color}]{r.seo_score}/100[/{score_color}]")
+    info_table.add_row("Audited On:", r.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+    
+    console.print(Panel(info_table, title="Audit Info", border_style="cyan"))
+    
+    if r.ai_recommendations:
+        console.print("\n[bold green]AI Recommendations:[/bold green]")
+        console.print(Markdown(r.ai_recommendations))
+    else:
+        console.print("\n[dim]No AI recommendations generated for this report.[/dim]")
+
+@report.command(name='export')
+@click.argument('report_id', type=int)
+@click.option('--format', type=click.Choice(['json', 'md', 'html']), default='json', help="Export format.")
+@click.argument('output_file')
+def report_export(report_id, output_file, format):
+    """Export a saved report to a file."""
+    import asyncio
+    async def fetch_report():
+        async with AsyncSessionLocal() as session:
+            return await session.get(SEOReport, report_id)
+            
+    r = asyncio.run(fetch_report())
+    if not r:
+        console.print(f"[bold red]Error: Report with ID {report_id} not found.[/bold red]")
+        return
+        
+    if format == 'json':
+        export_result(r.data, output_file, 'json')
+    elif format == 'md':
+        md = f"# SEO Report: {r.url}\n\n"
+        md += f"**Score:** {r.seo_score}/100\n"
+        md += f"**Date:** {r.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        if r.ai_recommendations:
+            md += f"## AI Recommendations\n\n{r.ai_recommendations}\n"
+        export_result(md, output_file, 'md')
+    elif format == 'html':
+        recs_html = r.ai_recommendations.replace('\n', '<br>') if r.ai_recommendations else "None"
+        html = f"""<html>
+<head>
+    <title>SEO Report for {r.url}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; color: #333; }}
+        h1, h2 {{ color: #0056b3; }}
+        .score {{ font-size: 24px; font-weight: bold; color: {'green' if r.seo_score > 80 else 'orange' if r.seo_score > 50 else 'red'}; }}
+        .meta {{ background: #f4f4f4; padding: 15px; border-left: 5px solid #0056b3; margin-bottom: 20px; }}
+    </style>
+</head>
+<body>
+    <h1>SEO Report</h1>
+    <div class="meta">
+        <p><strong>URL:</strong> {r.url}</p>
+        <p><strong>Score:</strong> <span class="score">{r.seo_score}/100</span></p>
+        <p><strong>Date:</strong> {r.created_at.strftime('%Y-%m-%d %H:%M:%S')}</p>
+    </div>
+    <h2>AI Recommendations</h2>
+    <div>{recs_html}</div>
+</body>
+</html>"""
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(html)
+            console.print(f"[green]Successfully exported HTML to {output_file}[/green]")
+        except Exception as e:
+            console.print(f"[red]Export failed: {str(e)}[/red]")
+
 
 # --- Configuration Command Group ---
 
@@ -96,7 +396,8 @@ def list_config():
 @click.argument('url')
 @click.option('--export', help="Export result to JSON file.")
 @click.option('--schema', is_flag=True, help="Generate JSON-LD Schema Markup.")
-def audit(url, export, schema):
+@click.option('--project-id', '-p', type=int, help="Associate report with a project ID.")
+def audit(url, export, schema, project_id):
     """Run a Deep SEO audit on a website URL (Playwright-powered)."""
     with console.status(f"[bold green]Deep Auditing {url} (Rendering JS)...", spinner="earth"):
         result = audit_website(url)
@@ -125,6 +426,37 @@ def audit(url, export, schema):
             markup = generate_schema_markup(result)
         console.print(Panel(markup, title="JSON-LD Schema Markup", border_style="yellow"))
 
+    if project_id:
+        async def save_report():
+            async with AsyncSessionLocal() as session:
+                proj = await session.get(Project, project_id)
+                if not proj:
+                    console.print(f"[red]Error: Project with ID {project_id} does not exist.[/red]")
+                    return None
+                
+                from app.services.gemini_service import generate_seo_recommendations
+                with console.status("[bold green]Generating AI SEO recommendations...", spinner="dots"):
+                    try:
+                        recs = generate_seo_recommendations(result)
+                    except Exception as e:
+                        recs = f"Error generating recommendations: {str(e)}"
+                
+                report = SEOReport(
+                    project_id=project_id,
+                    url=url,
+                    seo_score=result['seo_score'],
+                    data=result,
+                    ai_recommendations=recs
+                )
+                session.add(report)
+                await session.commit()
+                await session.refresh(report)
+                return report.id
+
+        report_id = asyncio.run(save_report())
+        if report_id:
+            console.print(f"[bold green]Report saved to Database under Project {project_id} with Report ID: {report_id}[/bold green]")
+
     if export:
         export_result(result, export)
 
@@ -150,20 +482,41 @@ def compare(my_url, competitor_url, export):
 @cli.command()
 @click.argument('topic')
 @click.option('--export', help="Export keywords to text file.")
-def keywords(topic, export):
+@click.option('--project-id', '-p', type=int, help="Associate keywords with a project ID.")
+def keywords(topic, export, project_id):
     """Generate keywords for a given topic."""
     with console.status(f"[bold green]Generating keywords for '{topic}'...", spinner="bouncingBar"):
         result = run_keyword_agent(topic)
     
     console.print(Panel(result['keywords_report'], title=f"Keywords for: {topic}", border_style="blue"))
     
+    if project_id:
+        async def save_keywords():
+            async with AsyncSessionLocal() as session:
+                proj = await session.get(Project, project_id)
+                if not proj:
+                    console.print(f"[red]Error: Project with ID {project_id} does not exist.[/red]")
+                    return False
+                
+                kw_research = KeywordResearch(
+                    project_id=project_id,
+                    topic=topic,
+                    results=result['keywords_report']
+                )
+                session.add(kw_research)
+                await session.commit()
+                return True
+        if asyncio.run(save_keywords()):
+            console.print(f"[bold green]Keyword strategy saved to Database under Project {project_id}[/bold green]")
+
     if export:
         export_result(result['keywords_report'], export, format='md')
 
 @cli.command()
 @click.argument('topic')
 @click.option('--export', help="Export result to JSON file.")
-def competitors(topic, export):
+@click.option('--project-id', '-p', type=int, help="Associate competitors with a project ID.")
+def competitors(topic, export, project_id):
     """Analyze competitors for a given keyword/topic."""
     with console.status(f"[bold green]Analyzing competitors for '{topic}'...", spinner="earth"):
         result = analyze_competitors(topic)
@@ -179,6 +532,26 @@ def competitors(topic, export):
     
     console.print(table)
     
+    if project_id:
+        async def save_competitors():
+            async with AsyncSessionLocal() as session:
+                proj = await session.get(Project, project_id)
+                if not proj:
+                    console.print(f"[red]Error: Project with ID {project_id} does not exist.[/red]")
+                    return False
+                
+                comp_analysis = CompetitorAnalysis(
+                    project_id=project_id,
+                    keyword=topic,
+                    competitors_data=result['competitors'],
+                    ai_insights=result['insights']
+                )
+                session.add(comp_analysis)
+                await session.commit()
+                return True
+        if asyncio.run(save_competitors()):
+            console.print(f"[bold green]Competitor analysis saved to Database under Project {project_id}[/bold green]")
+
     if export:
         export_result(result, export)
 
@@ -228,7 +601,8 @@ def content(topic, context, content_type, export, humanize, arena):
 @click.option('--url', help="Target URL for audit as part of the strategy.")
 @click.option('--export', help="Export full strategy to JSON file.")
 @click.option('--humanize', is_flag=True, help="Humanize the generated content.")
-def strategy(topic, url, export, humanize):
+@click.option('--project-id', '-p', type=int, help="Associate strategy with a project ID.")
+def strategy(topic, url, export, humanize, project_id):
     """Run a full SEO strategy (Keywords + Competitors + Content + Audit)."""
     
     async def run_strategy():
@@ -238,15 +612,34 @@ def strategy(topic, url, export, humanize):
             transient=True,
         ) as progress:
             task = progress.add_task(description=f"Executing full strategy for: {topic}...", total=None)
-            result = await orchestrator.execute_full_strategy(topic, target_url=url)
             
-            if humanize:
+            db = None
+            if project_id:
+                async with AsyncSessionLocal() as session:
+                    proj = await session.get(Project, project_id)
+                    if not proj:
+                        console.print(f"[red]Error: Project with ID {project_id} does not exist.[/red]")
+                        return None
+                db = AsyncSessionLocal()
+            
+            try:
+                result = await orchestrator.execute_full_strategy(topic, target_url=url, project_id=project_id, db=db)
+                if db:
+                    await db.close()
+            except Exception as e:
+                if db:
+                    await db.close()
+                raise e
+            
+            if result and humanize:
                 progress.update(task, description="Humanizing generated content...")
                 result['output']['content'] = humanize_text(result['output']['content'])
             
             return result
 
     result = asyncio.run(run_strategy())
+    if not result:
+        return
     
     console.print(Rule(f"STRATEGY REPORT: {topic}", style="bold blue"))
     console.print(Panel(result['summary'], subtitle="Executive Summary"))
@@ -424,10 +817,223 @@ def keywords_batch(topics, file, export):
     if export:
         export_result(results, export)
 
+import subprocess
+import signal
+
+# --- Service Orchestration ---
+
+@cli.group()
+def serve():
+    """Launch platform services (Backend & Frontend)."""
+    pass
+
+@serve.command(name='all')
+@click.option('--port', default=8000, help="Backend port.")
+@click.option('--host', default="0.0.0.0", help="Backend host.")
+def serve_all(port, host):
+    """Start both Backend (FastAPI) and Frontend (Vite) in parallel."""
+    console.print(Rule("Launching SEO SaaS Services", style="bold green"))
+    
+    backend_cmd = [sys.executable, "-m", "uvicorn", "app.main:app", "--host", host, "--port", str(port), "--reload"]
+    frontend_dir = os.path.join(os.path.dirname(backend_dir), 'frontend')
+    frontend_cmd = ["npm", "run", "dev"]
+    
+    processes = []
+    try:
+        console.print(f"[cyan]🚀 Starting Backend on http://{host}:{port}[/cyan]")
+        p_back = subprocess.Popen(backend_cmd, cwd=backend_dir)
+        processes.append(p_back)
+        
+        console.print(f"[cyan]🚀 Starting Frontend in {frontend_dir}[/cyan]")
+        p_front = subprocess.Popen(frontend_cmd, cwd=frontend_dir, shell=True)
+        processes.append(p_front)
+        
+        console.print("\n[bold yellow]Press Ctrl+C to stop all services.[/bold yellow]\n")
+        
+        # Keep main thread alive
+        while True:
+            time.sleep(1)
+            if p_back.poll() is not None or p_front.poll() is not None:
+                break
+                
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Stopping services...[/bold red]")
+    finally:
+        for p in processes:
+            p.terminate()
+            p.wait()
+        console.print("[dim]Services stopped.[/dim]")
+
+# --- Model Intelligence ---
+
+@cli.group()
+def models():
+    """Manage and benchmark AI models."""
+    pass
+
+@models.command(name='list')
+def models_list():
+    """List all supported and active AI models."""
+    from app.core.config import settings
+    table = Table(title="AI Model Registry", box=box.ROUNDED)
+    table.add_column("Provider", style="cyan")
+    table.add_column("Model ID", style="yellow")
+    table.add_column("Status", style="bold")
+    
+    providers = [
+        ("Google Gemini", settings.GEMINI_MODEL, "GEMINI_API_KEY"),
+        ("OpenRouter", "DeepSeek-V3", "OPENROUTER_API_KEY"),
+        ("SerpApi", "Google Search", "SERPAPI_API_KEY"),
+    ]
+    
+    for name, mid, env_key in providers:
+        status = "[green]Ready[/green]" if os.getenv(env_key) else "[red]Not Configured[/red]"
+        table.add_row(name, mid, status)
+        
+    console.print(table)
+
+@models.command(name='bench')
+def models_bench():
+    """Benchmark configured models and services with a latency test."""
+    from app.services.gemini_service import get_gemini_model, generate_with_openrouter
+    from app.services.serpapi_service import fetch_competitors
+    
+    results = []
+    
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
+        # 1. Gemini Benchmark
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if gemini_api_key and not gemini_api_key.startswith("ADD_YOUR"):
+            task = progress.add_task("[cyan]Benchmarking Google Gemini...", total=None)
+            start = time.time()
+            try:
+                model = get_gemini_model()
+                if model:
+                    model.generate_content("ping")
+                    latency = (time.time() - start) * 1000
+                    results.append(("Google Gemini", "gemini-2.0-flash", f"[green]Online[/green]", f"{latency:.0f}ms"))
+                    progress.update(task, description="[cyan]Benchmarking Google Gemini... [green]Done[/green]")
+                else:
+                    results.append(("Google Gemini", "gemini-2.0-flash", "[red]Failed[/red]", "N/A"))
+                    progress.update(task, description="[cyan]Benchmarking Google Gemini... [red]Failed[/red]")
+            except Exception as e:
+                results.append(("Google Gemini", "gemini-2.0-flash", f"[red]Error: {str(e)}[/red]", "N/A"))
+                progress.update(task, description="[cyan]Benchmarking Google Gemini... [red]Failed[/red]")
+        else:
+            results.append(("Google Gemini", "gemini-2.0-flash", "[yellow]Not Configured[/yellow]", "N/A"))
+
+        # 2. OpenRouter Benchmark
+        openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_api_key and not openrouter_api_key.startswith("ADD_YOUR"):
+            task = progress.add_task("[cyan]Benchmarking OpenRouter (Gemini Pro)...", total=None)
+            start = time.time()
+            try:
+                res = generate_with_openrouter("ping")
+                if res and "AI Error" not in res:
+                    latency = (time.time() - start) * 1000
+                    results.append(("OpenRouter", "gemini-2.0-flash-001", "[green]Online[/green]", f"{latency:.0f}ms"))
+                    progress.update(task, description="[cyan]Benchmarking OpenRouter... [green]Done[/green]")
+                else:
+                    results.append(("OpenRouter", "gemini-2.0-flash-001", "[red]Failed[/red]", "N/A"))
+                    progress.update(task, description="[cyan]Benchmarking OpenRouter... [red]Failed[/red]")
+            except Exception as e:
+                results.append(("OpenRouter", "gemini-2.0-flash-001", f"[red]Error: {str(e)}[/red]", "N/A"))
+                progress.update(task, description="[cyan]Benchmarking OpenRouter... [red]Failed[/red]")
+        else:
+            results.append(("OpenRouter", "gemini-2.0-flash-001", "[yellow]Not Configured[/yellow]", "N/A"))
+
+        # 3. SerpApi Benchmark
+        serpapi_key = os.getenv("SERPAPI_KEY") or os.getenv("SERPAPI_API_KEY")
+        if serpapi_key and not serpapi_key.startswith("ADD_YOUR"):
+            os.environ["SERPAPI_KEY"] = serpapi_key
+            task = progress.add_task("[cyan]Benchmarking SerpApi...", total=None)
+            start = time.time()
+            try:
+                fetch_competitors("ping")
+                latency = (time.time() - start) * 1000
+                results.append(("SerpApi", "Google Search Engine", "[green]Online[/green]", f"{latency:.0f}ms"))
+                progress.update(task, description="[cyan]Benchmarking SerpApi... [green]Done[/green]")
+            except Exception as e:
+                results.append(("SerpApi", "Google Search Engine", f"[red]Error: {str(e)}[/red]", "N/A"))
+                progress.update(task, description="[cyan]Benchmarking SerpApi... [red]Failed[/red]")
+        else:
+            results.append(("SerpApi", "Google Search Engine", "[yellow]Not Configured[/yellow]", "N/A"))
+
+    table = Table(title="Model & API Latency Benchmark", box=box.ROUNDED)
+    table.add_column("Provider/Service", style="cyan")
+    table.add_column("Model/Target", style="yellow")
+    table.add_column("Status", style="bold")
+    table.add_column("Latency", style="green")
+    
+    for provider, model_id, status, latency in results:
+        table.add_row(provider, model_id, status, latency)
+        
+    console.print(table)
+
+@cli.command()
+@click.option('--format', type=click.Choice(['json', 'md', 'html']), default='json', help="Export format.")
+@click.argument('url')
+@click.argument('output_file')
+def export_audit(url, output_file, format):
+    """Deep audit a URL and export in multiple formats."""
+    with console.status(f"Auditing {url}..."):
+        result = audit_website(url)
+        
+    if format == 'json':
+        export_result(result, output_file, 'json')
+    elif format == 'md':
+        md = f"# SEO Report: {url}\n\n"
+        md += f"**Score:** {result['seo_score']}/100\n\n"
+        md += f"**Title:** {result['title']}\n\n"
+        md += "## Meta Data\n"
+        md += f"- **Description:** {result['meta_description']}\n"
+        md += f"- **Links Found:** {result['total_links']}\n"
+        export_result(md, output_file, 'md')
+    elif format == 'html':
+        html = f"<html><body><h1>SEO Report: {url}</h1><p>Score: {result['seo_score']}</p></body></html>"
+        with open(output_file, 'w') as f:
+            f.write(html)
+        console.print(f"Exported HTML to {output_file}")
+
 from rich.live import Live
 from rich.layout import Layout
 from datetime import datetime
-import time
+
+def make_dashboard_layout() -> Layout:
+    """Create the dashboard layout structure."""
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="main", ratio=1),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_row(
+        Layout(name="side", ratio=1),
+        Layout(name="body", ratio=3),
+    )
+    return layout
+
+from rich.live import Live
+from rich.layout import Layout
+from datetime import datetime
+
+def make_dashboard_layout() -> Layout:
+    """Create the TUI dashboard layout structure."""
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="main", ratio=1),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_row(
+        Layout(name="side", ratio=1),
+        Layout(name="body", ratio=3),
+    )
+    return layout
+
+from rich.live import Live
+from rich.layout import Layout
+from datetime import datetime
 
 def make_dashboard_layout() -> Layout:
     layout = Layout()
@@ -442,45 +1048,112 @@ def make_dashboard_layout() -> Layout:
     )
     return layout
 
+# --- Enhanced Dashboard ---
+
 @cli.command()
 def dashboard():
     """📊 Live SEO Mission Control Dashboard."""
     layout = make_dashboard_layout()
     
+    async def get_dashboard_stats():
+        async with AsyncSessionLocal() as session:
+            p_res = await session.execute(select(func.count(Project.id)))
+            projects_count = p_res.scalar() or 0
+            
+            r_res = await session.execute(select(func.count(SEOReport.id), func.avg(SEOReport.seo_score)))
+            r_row = r_res.first()
+            reports_count = r_row[0] or 0
+            avg_score = r_row[1] or 0.0
+            
+            k_res = await session.execute(select(func.count(KeywordResearch.id)))
+            keywords_count = k_res.scalar() or 0
+            
+            c_res = await session.execute(select(func.count(CompetitorAnalysis.id)))
+            competitors_count = c_res.scalar() or 0
+            
+            reports_latest = await session.execute(
+                select(SEOReport.url, SEOReport.created_at)
+                .order_by(SEOReport.created_at.desc())
+                .limit(5)
+            )
+            activities = [("AuditAgent", row[0], "[green]DONE[/green]", row[1]) for row in reports_latest.all()]
+            
+            keywords_latest = await session.execute(
+                select(KeywordResearch.topic, KeywordResearch.created_at)
+                .order_by(KeywordResearch.created_at.desc())
+                .limit(5)
+            )
+            activities += [("KeywordAgent", row[0], "[green]DONE[/green]", row[1]) for row in keywords_latest.all()]
+            
+            competitors_latest = await session.execute(
+                select(CompetitorAnalysis.keyword, CompetitorAnalysis.created_at)
+                .order_by(CompetitorAnalysis.created_at.desc())
+                .limit(5)
+            )
+            activities += [("CompetitorAgent", row[0], "[green]DONE[/green]", row[1]) for row in competitors_latest.all()]
+            
+            activities.sort(key=lambda x: x[3], reverse=True)
+            latest_activities = activities[:5]
+            
+            return {
+                "projects": projects_count,
+                "audits": reports_count,
+                "avg_score": float(avg_score),
+                "keywords": keywords_count,
+                "competitors": competitors_count,
+                "activities": latest_activities
+            }
+
     def update_content():
-        # Header
+        now = datetime.now().strftime("%H:%M:%S")
         layout["header"].update(Panel(
-            f"[bold blue]SEO SaaS Platform - Mission Control[/bold blue] | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"[bold blue]SEO SaaS Platform - Mission Control[/bold blue] | {now}",
             border_style="blue"
         ))
         
-        # Side: System Status
+        try:
+            stats = asyncio.run(get_dashboard_stats())
+        except Exception as e:
+            stats = {
+                "projects": 0,
+                "audits": 0,
+                "avg_score": 0.0,
+                "keywords": 0,
+                "competitors": 0,
+                "activities": []
+            }
+            
         status_table = Table(show_header=False, box=box.SIMPLE)
-        status_table.add_row("DB", "[green]Online[/green]" if True else "[red]Offline[/red]") # Simplified check
-        status_table.add_row("Gemini", "[green]Ready[/green]" if os.getenv("GEMINI_API_KEY") else "[red]Missing[/red]")
-        status_table.add_row("SerpApi", "[green]Ready[/green]" if os.getenv("SERPAPI_API_KEY") else "[red]Missing[/red]")
-        layout["side"].update(Panel(status_table, title="System Health", border_style="cyan"))
+        status_table.add_row("Backend", "[green]Healthy[/green]")
+        status_table.add_row("Projects", str(stats["projects"]))
+        status_table.add_row("Total Audits", str(stats["audits"]))
+        status_table.add_row("Avg SEO Score", f"{stats['avg_score']:.1f}/100")
+        status_table.add_row("Keyword Strat", str(stats["keywords"]))
+        status_table.add_row("Competitor Runs", str(stats["competitors"]))
+        status_table.add_row("Gemini", "[green]Ready[/green]" if os.getenv("GEMINI_API_KEY") else "[red]OFF[/red]")
+        layout["side"].update(Panel(status_table, title="System Stats", border_style="cyan"))
         
-        # Body: Recent Activity (Mocked for now, or query DB)
-        activity_table = Table(title="Recent Activity", box=box.ROUNDED, expand=True)
+        activity_table = Table(title="Recent Orchestrations", box=box.ROUNDED, expand=True)
+        activity_table.add_column("Agent", style="bold")
+        activity_table.add_column("Topic/URL")
+        activity_table.add_column("Status", style="dim")
         activity_table.add_column("Time", style="dim")
-        activity_table.add_column("Action", style="bold")
-        activity_table.add_column("Target")
         
-        # Ideally, fetch from DB here
-        activity_table.add_row(datetime.now().strftime("%H:%M"), "Audit", "https://example.com")
-        activity_table.add_row(datetime.now().strftime("%H:%M"), "Keywords", "SEO Tools")
-        
+        for agent, target, status, dt in stats["activities"]:
+            time_str = dt.strftime("%H:%M:%S")
+            activity_table.add_row(agent, target[:45] + "..." if len(target) > 45 else target, status, time_str)
+            
+        if not stats["activities"]:
+            activity_table.add_row("None", "No recent runs in database.", "", "")
+            
         layout["body"].update(Panel(activity_table, border_style="magenta"))
-        
-        # Footer
-        layout["footer"].update(Panel("[dim]Press Ctrl+C to exit dashboard[/dim]", border_style="dim"))
+        layout["footer"].update(Panel("[dim]Dashboard v2.5 • Ctrl+C to Exit[/dim]", border_style="dim"))
 
-    with Live(layout, refresh_per_second=1, screen=True):
+    with Live(layout, refresh_per_second=2, screen=True):
         try:
             while True:
                 update_content()
-                time.sleep(1)
+                time.sleep(0.5)
         except KeyboardInterrupt:
             pass
 
@@ -549,6 +1222,50 @@ def doctor():
     else:
         console.print(Panel("🔧 Some issues were found. Please check your .env file and API keys.", border_style="yellow"))
 
+# --- Interactive Mode Helpers ---
+
+async def get_projects_list():
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Project))
+        return result.scalars().all()
+
+async def db_create_project(name: str, domain: str):
+    async with AsyncSessionLocal() as session:
+        p = Project(name=name, domain=domain)
+        session.add(p)
+        await session.commit()
+        return p.id
+
+def prompt_select_project(action_name: str) -> int:
+    """Prompt the user to optionally associate an action with a project, returning project_id or None."""
+    import questionary
+    import asyncio
+    
+    if not questionary.confirm(f"Would you like to associate this {action_name} with an SEO Project?").ask():
+        return None
+        
+    projects = asyncio.run(get_projects_list())
+    if not projects:
+        if questionary.confirm("No projects exist. Create one now?").ask():
+            name = questionary.text("Project Name:").ask()
+            domain = questionary.text("Target Domain:").ask()
+            if name and domain:
+                return asyncio.run(db_create_project(name, domain))
+        return None
+        
+    choices = [f"{p.id}: {p.name} ({p.domain})" for p in projects] + ["Create New Project", "Skip / No Project"]
+    selection = questionary.select("Choose a project:", choices=choices).ask()
+    
+    if selection == "Create New Project":
+        name = questionary.text("Project Name:").ask()
+        domain = questionary.text("Target Domain:").ask()
+        if name and domain:
+            return asyncio.run(db_create_project(name, domain))
+    elif selection != "Skip / No Project" and selection:
+        return int(selection.split(":")[0])
+        
+    return None
+
 # --- Interactive Mode ---
 
 @cli.command()
@@ -576,6 +1293,7 @@ def interactive():
                 "AI Assistant (Chat)",
                 "Full SEO Strategy",
                 "System Health (Doctor)",
+                "Manage Projects",
                 "Manage Configuration",
                 "Exit"
             ]
@@ -595,7 +1313,8 @@ def interactive():
                 url = questionary.text("Enter the website URL to audit:").ask()
                 if url:
                     do_schema = questionary.confirm("Generate JSON-LD Schema Markup?").ask()
-                    ctx.invoke(audit, url=url, export=None, schema=do_schema)
+                    project_id = prompt_select_project("Audit")
+                    ctx.invoke(audit, url=url, export=None, schema=do_schema, project_id=project_id)
 
             elif action == "Batch SEO Audit":
                 urls = questionary.text("Enter URLs (comma-separated):").ask()
@@ -611,7 +1330,8 @@ def interactive():
             elif action == "Keyword Research":
                 topic = questionary.text("Enter the topic for keyword research:").ask()
                 if topic:
-                    ctx.invoke(keywords, topic=topic, export=None)
+                    project_id = prompt_select_project("Keyword Research")
+                    ctx.invoke(keywords, topic=topic, export=None, project_id=project_id)
 
             elif action == "Batch Keywords":
                 topics = questionary.text("Enter topics (comma-separated):").ask()
@@ -621,7 +1341,8 @@ def interactive():
             elif action == "Competitor Analysis":
                 topic = questionary.text("Enter the topic/keyword to analyze competitors:").ask()
                 if topic:
-                    ctx.invoke(competitors, topic=topic, export=None)
+                    project_id = prompt_select_project("Competitor Analysis")
+                    ctx.invoke(competitors, topic=topic, export=None, project_id=project_id)
 
             elif action == "Content Generation":
                 topic = questionary.text("Enter the topic for content generation:").ask()
@@ -652,10 +1373,45 @@ def interactive():
                 if topic:
                     url = questionary.text("Enter target URL (optional):").ask()
                     do_humanize = questionary.confirm("Humanize the generated content?").ask()
-                    ctx.invoke(strategy, topic=topic, url=url, export=None, humanize=do_humanize)
+                    project_id = prompt_select_project("Full Strategy")
+                    ctx.invoke(strategy, topic=topic, url=url, export=None, humanize=do_humanize, project_id=project_id)
 
             elif action == "System Health (Doctor)":
                 ctx.invoke(doctor)
+
+            elif action == "Manage Projects":
+                proj_action = questionary.select(
+                    "Project Task:",
+                    choices=["List Projects", "Create Project", "View Project Details", "Delete Project", "Back"]
+                ).ask()
+                
+                if proj_action == "List Projects":
+                    ctx.invoke(project_list)
+                elif proj_action == "Create Project":
+                    name = questionary.text("Project Name:").ask()
+                    domain = questionary.text("Target Domain:").ask()
+                    if name and domain:
+                        ctx.invoke(project_create, name=name, domain=domain)
+                elif proj_action == "View Project Details":
+                    projects = asyncio.run(get_projects_list())
+                    if not projects:
+                        console.print("[yellow]No projects exist.[/yellow]")
+                    else:
+                        choices = [f"{p.id}: {p.name} ({p.domain})" for p in projects]
+                        sel = questionary.select("Select project to view:", choices=choices).ask()
+                        if sel:
+                            pid = int(sel.split(":")[0])
+                            ctx.invoke(project_view, project_id=pid)
+                elif proj_action == "Delete Project":
+                    projects = asyncio.run(get_projects_list())
+                    if not projects:
+                        console.print("[yellow]No projects exist.[/yellow]")
+                    else:
+                        choices = [f"{p.id}: {p.name} ({p.domain})" for p in projects]
+                        sel = questionary.select("Select project to delete:", choices=choices).ask()
+                        if sel:
+                            pid = int(sel.split(":")[0])
+                            ctx.invoke(project_delete, project_id=pid)
 
             elif action == "Manage Configuration":
                 sub_action = questionary.select(
@@ -676,7 +1432,13 @@ def interactive():
                         ctx.invoke(get_config, key=key)
             
             # Pause after each action so user can see output
-            if action != "Manage Configuration" or (action == "Manage Configuration" and sub_action != "Back"):
+            should_pause = True
+            if action == "Manage Configuration" and sub_action == "Back":
+                should_pause = False
+            elif action == "Manage Projects" and proj_action == "Back":
+                should_pause = False
+                
+            if should_pause:
                 console.print("\n[dim]Press Enter to return to menu...[/dim]")
                 input()
 

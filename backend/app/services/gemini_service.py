@@ -3,7 +3,11 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
+# Search for .env in the backend directory specifically
+base_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(base_dir, "..", "..", ".env")
+load_dotenv(dotenv_path=env_path)
+load_dotenv() # Also load from current working directory
 
 # Gemini Config
 GEMINI_KEYS = [
@@ -55,11 +59,12 @@ def generate_content_with_fallback(prompt: str) -> str:
     Tiered Fallback logic:
     1. Primary Gemini Key
     2. Backup Gemini Key
-    3. OpenRouter (Final Fallback)
+    3. OpenAI (Primary Fallback)
+    4. OpenRouter (Final Fallback)
     """
     global current_gemini_index
     
-    # Try Gemini Keys first
+    # Tier 1: Gemini
     for _ in range(len(GEMINI_KEYS)):
         try:
             model = get_gemini_model()
@@ -77,15 +82,25 @@ def generate_content_with_fallback(prompt: str) -> str:
                 continue
             else:
                 print(f"Gemini AI Error: {str(e)}")
-                break # Non-quota error, try OpenRouter immediately
+                break
 
-    # Final Fallback: OpenRouter
-    print("All Gemini keys exhausted or failed. Attempting OpenRouter...")
+    # Tier 2: OpenAI
+    print("Gemini failed. Attempting OpenAI...")
+    try:
+        from .openai_service import generate_with_openai
+        openai_res = generate_with_openai(prompt)
+        if openai_res and not openai_res.startswith("OpenAI Error"):
+            return openai_res
+    except Exception as e:
+        print(f"OpenAI Fallback Error: {str(e)}")
+
+    # Tier 3: OpenRouter
+    print("All primary providers failed. Attempting OpenRouter...")
     or_result = generate_with_openrouter(prompt)
     if or_result:
         return or_result
     
-    return "AI Error: All providers (Gemini & OpenRouter) exhausted or failed."
+    return "AI Error: All providers (Gemini, OpenAI & OpenRouter) exhausted or failed."
 
 def generate_seo_recommendations(data):
     """Specific wrapper for SEO recommendations."""

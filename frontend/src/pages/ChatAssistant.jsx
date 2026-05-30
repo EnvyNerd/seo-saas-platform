@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Trash2, Sparkles, Loader2, User, CheckSquare, Copy } from "lucide-react";
+import { MessageSquare, Send, Trash2, Sparkles, Loader2, User, CheckSquare, Copy, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
-import { Container, Card } from "../components/ui";
+import { Container, Card, Button, Input, Badge } from "../components/ui";
 
 const SUGGESTED_PROMPTS = [
   "How do I optimize my page for featured snippets?",
@@ -92,87 +92,95 @@ export default function ChatAssistant() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg-secondary)] text-[var(--text-primary)] relative overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-65px)] bg-surface-secondary text-text-primary relative overflow-hidden">
       <div className="mesh-grid absolute inset-0 pointer-events-none z-0 opacity-40" />
 
       {/* Chat Header */}
-      <header className="relative z-10 flex items-center justify-between border-b border-[var(--border-light)] bg-[var(--bg-primary)] px-6 py-4 shadow-sm">
+      <header className="relative z-10 flex items-center justify-between border-b border-border-light bg-surface-primary px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[var(--slb-blue-500)] to-[var(--slb-cyan-400)] text-white shadow-md">
-            <Sparkles className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slb-blue-500/10 text-slb-blue-500 shadow-sm border border-slb-blue-500/20">
+            <Bot className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="font-display text-lg font-bold">AI SEO Assistant</h1>
-            <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              General purpose & SEO specialist chat
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-lg font-bold">SEO Assistant</h1>
+              <Badge variant="success" size="sm" className="text-[8px] px-1 py-0 h-4">Online</Badge>
+            </div>
+            <p className="text-[10px] text-text-muted flex items-center gap-1.5 mt-0.5">
+              Powered by Gemini 2.0 Flash
             </p>
           </div>
         </div>
 
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleClearHistory}
           disabled={loading || messages.length <= 1}
-          className="flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          startIcon={Trash2}
+          className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-          Clear Chat
-        </button>
+          Clear History
+        </Button>
       </header>
 
       {/* Main chat layout */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 relative z-10 space-y-6">
-        <Container className="max-w-4xl space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-8 relative z-10 custom-scrollbar">
+        <Container className="max-w-4xl space-y-8">
           {messages.map((msg, index) => {
             const isUser = msg.role === "user";
             return (
               <div
                 key={index}
-                className={`flex gap-4 animate-fadeInUp ${
+                className={`flex gap-5 animate-fadeInUp ${
                   isUser ? "flex-row-reverse" : "flex-row"
                 }`}
               >
                 {/* Avatar */}
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-white ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all shadow-sm ${
                     isUser
-                      ? "border-blue-500 bg-blue-600 shadow-sm"
-                      : "border-[var(--border-light)] bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
+                      ? "border-slb-blue-500 bg-slb-blue-500 text-white"
+                      : "border-border-light bg-surface-primary text-slb-blue-500"
                   }`}
                 >
-                  {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4 text-[var(--slb-blue-500)]" />}
+                  {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                 </div>
 
                 {/* Message Box */}
-                <div className={`relative max-w-[80%] group`}>
-                  <div
-                    className={`rounded-xl px-4 py-3 text-sm shadow-sm leading-relaxed border ${
+                <div className={`relative max-w-[85%] group`}>
+                  <Card 
+                    variant={isUser ? "flat" : "elevated"} 
+                    className={`px-5 py-4 text-sm leading-relaxed border transition-all ${
                       isUser
-                        ? "bg-[var(--slb-blue-500)] text-white border-[var(--slb-blue-500)]"
-                        : "bg-[var(--bg-primary)] text-[var(--text-primary)] border-[var(--border-light)]"
+                        ? "bg-slb-blue-500 text-white border-slb-blue-500 rounded-tr-none shadow-slb-blue-500/10"
+                        : "bg-surface-primary text-text-primary border-border-light rounded-tl-none"
                     }`}
                   >
                     <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                       {isUser ? (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       ) : (
-                        <ReactMarkdown className="markdown-content">{msg.content}</ReactMarkdown>
+                        <ReactMarkdown className="markdown-content font-sans">{msg.content}</ReactMarkdown>
                       )}
                     </div>
-                  </div>
+                  </Card>
+                  
                   {/* Actions on hover */}
                   {!isUser && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => copyMessageText(msg.content, index)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-secondary)] border border-[var(--border-light)] p-1 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] shadow-sm"
+                      className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-primary border border-border-light h-8 w-8 p-0 min-w-0 rounded-full shadow-md"
                       title="Copy message"
                     >
                       {copiedIndex === index ? (
-                        <CheckSquare className="h-3 w-3 text-green-500" />
+                        <CheckSquare className="h-3.5 w-3.5 text-green-500" />
                       ) : (
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-3.5 w-3.5" />
                       )}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -181,25 +189,28 @@ export default function ChatAssistant() {
 
           {/* Typing Loading Indicator */}
           {loading && (
-            <div className="flex gap-4 items-center">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-light)] bg-[var(--bg-tertiary)] text-[var(--text-primary)]">
-                <Loader2 className="h-4 w-4 animate-spin text-[var(--slb-blue-500)]" />
+            <div className="flex gap-5 items-center animate-pulse">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-slb-blue-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
               </div>
-              <div className="rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] px-4 py-3 text-xs text-[var(--text-muted)] italic shadow-sm">
-                Thinking…
+              <div className="rounded-xl border border-border-light bg-surface-primary px-5 py-3 text-xs text-text-muted italic shadow-sm">
+                Thinking about your strategy...
               </div>
             </div>
           )}
 
           {/* Starters block */}
           {messages.length === 1 && !loading && (
-            <div className="grid sm:grid-cols-2 gap-3 pt-6 max-w-2xl mx-auto">
+            <div className="grid sm:grid-cols-2 gap-4 pt-10 max-w-3xl mx-auto">
               {SUGGESTED_PROMPTS.map((prompt, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSendMessage(prompt)}
-                  className="p-3 text-left text-xs rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--border-focus)] hover:text-[var(--text-primary)] transition-all shadow-sm"
+                  className="p-4 text-left text-xs font-semibold rounded-xl border border-border-light bg-surface-primary text-text-secondary hover:border-slb-blue-500 hover:text-slb-blue-500 hover:shadow-lg hover:shadow-slb-blue-500/5 transition-all shadow-sm flex items-center gap-3 group"
                 >
+                  <div className="p-1.5 rounded-lg bg-surface-secondary group-hover:bg-slb-blue-500/10 transition-colors">
+                    <Sparkles className="h-3.5 w-3.5 text-text-muted group-hover:text-slb-blue-500" />
+                  </div>
                   {prompt}
                 </button>
               ))}
@@ -211,31 +222,41 @@ export default function ChatAssistant() {
       </div>
 
       {/* Input Tray */}
-      <footer className="relative z-10 border-t border-[var(--border-light)] bg-[var(--bg-primary)] px-6 py-4">
+      <footer className="relative z-10 border-t border-border-light bg-surface-primary px-6 py-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <Container className="max-w-4xl">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="flex items-center gap-3 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-[var(--slb-blue-500)]/40 transition-all"
+            className="flex items-center gap-4"
           >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything about SEO..."
-              disabled={loading}
-              className="flex-1 bg-transparent border-0 outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-0 focus:outline-none"
-            />
-            <button
+            <div className="flex-1 relative group">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask me anything about SEO..."
+                disabled={loading}
+                className="w-full bg-surface-secondary border border-border-light rounded-xl px-5 py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-slb-blue-500/40 transition-all pr-12 shadow-inner"
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted text-[10px] font-bold uppercase tracking-wider opacity-50 group-focus-within:opacity-0 transition-opacity">
+                Enter ↵
+              </div>
+            </div>
+            <Button
               type="submit"
               disabled={loading || !input.trim()}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--slb-blue-500)] text-white hover:bg-[var(--slb-blue-400)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              variant="primary"
+              className="h-[52px] w-[52px] rounded-xl shadow-lg shadow-slb-blue-500/20"
+              loading={loading}
             >
-              <Send className="h-4 w-4" />
-            </button>
+              {!loading && <Send className="h-5 w-5" />}
+            </Button>
           </form>
+          <p className="text-center text-[10px] text-text-muted mt-4 uppercase tracking-[0.1em] font-medium opacity-50">
+            AI can make mistakes. Verify critical information.
+          </p>
         </Container>
       </footer>
     </div>

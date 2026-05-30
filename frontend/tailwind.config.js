@@ -115,6 +115,9 @@ export default {
         float: "float 3s ease-in-out infinite",
         glow: "glow 2s ease-in-out infinite",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
+        fadeIn: "fadeIn 0.4s ease-out forwards",
+        slideInDown: "slideInDown 0.4s ease-out forwards",
+        slideInUp: "slideInUp 0.4s ease-out forwards",
       },
       keyframes: {
         fadeInUp: {
@@ -128,6 +131,18 @@ export default {
         slideInRight: {
           from: { opacity: "0", transform: "translateX(20px)" },
           to: { opacity: "1", transform: "translateX(0)" },
+        },
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        slideInDown: {
+          from: { opacity: "0", transform: "translateY(-20px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        slideInUp: {
+          from: { opacity: "0", transform: "translateY(20px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0px)" },

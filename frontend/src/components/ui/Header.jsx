@@ -1,5 +1,6 @@
 import React from 'react';
 import { Menu, X } from 'lucide-react';
+import ThemeToggle from '../ThemeToggle';
 
 export const Header = ({ logo, navigation, className = '' }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -7,7 +8,7 @@ export const Header = ({ logo, navigation, className = '' }) => {
   return (
     <header
       className={`
-        bg-white border-b border-slb-gray-light shadow-sm sticky top-0 z-50
+        bg-surface-primary border-b border-border-light shadow-sm sticky top-0 z-50
         ${className}
       `}
     >
@@ -28,7 +29,7 @@ export const Header = ({ logo, navigation, className = '' }) => {
                   font-medium transition-colors
                   ${item.active
                     ? 'text-slb-accent'
-                    : 'text-slb-navy hover:text-slb-accent'
+                    : 'text-text-secondary hover:text-text-primary'
                   }
                 `}
               >
@@ -37,13 +38,18 @@ export const Header = ({ logo, navigation, className = '' }) => {
             ))}
           </nav>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 text-slb-navy"
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Right Section: Theme Toggle + Mobile Menu */}
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="md:hidden p-2 text-text-primary hover:bg-surface-secondary rounded-lg transition-colors"
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
@@ -57,7 +63,7 @@ export const Header = ({ logo, navigation, className = '' }) => {
                   font-medium transition-colors py-2
                   ${item.active
                     ? 'text-slb-accent'
-                    : 'text-slb-navy hover:text-slb-accent'
+                    : 'text-text-secondary hover:text-text-primary'
                   }
                 `}
               >

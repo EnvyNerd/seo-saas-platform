@@ -21,12 +21,18 @@ def audit_website(url: str):
             
             # Take a screenshot for the report
             screenshot_name = f"audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            screenshot_dir = os.path.join("data", "screenshots")
+            screenshot_dir = os.path.join("backend", "data", "screenshots")
             if not os.path.exists(screenshot_dir):
-                os.makedirs(screenshot_dir)
+                # Try relative to backend root
+                screenshot_dir = os.path.join("data", "screenshots")
+                if not os.path.exists(screenshot_dir):
+                    os.makedirs(screenshot_dir, exist_ok=True)
             
-            screenshot_path = os.path.join(screenshot_dir, screenshot_name)
-            page.screenshot(path=screenshot_path)
+            screenshot_local_path = os.path.join(screenshot_dir, screenshot_name)
+            page.screenshot(path=screenshot_local_path)
+            
+            # URL path for the frontend
+            screenshot_url = f"/screenshots/{screenshot_name}"
             
             # Get the rendered HTML
             content = page.content()
@@ -66,7 +72,7 @@ def audit_website(url: str):
                 "h1_tags": h1_tags,
                 "total_links": total_links,
                 "missing_alt_images": missing_alt,
-                "screenshot_path": screenshot_path,
+                "screenshot_path": screenshot_url,
                 "timestamp": datetime.now().isoformat()
             }
 

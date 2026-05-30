@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { FileText, Loader2, AlertCircle, Sparkles, Wand2, Copy, CheckSquare, RefreshCw, LayoutGrid } from "lucide-react";
+import { FileText, Loader2, AlertCircle, Sparkles, Wand2, Copy, CheckSquare, RefreshCw, LayoutGrid, FileEdit } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
-import { Card, Container, HeroSection } from "../components/ui";
+import { Card, Container, HeroSection, Button, Input, Select, Badge, Alert, Tabs } from "../components/ui";
 
 const CONTENT_TYPES = [
-  "Blog Post",
-  "Landing Page",
-  "Product Description",
-  "FAQ",
-  "Meta Description",
+  { value: "Blog Post", label: "Blog Post" },
+  { value: "Landing Page", label: "Landing Page" },
+  { value: "Product Description", label: "Product Description" },
+  { value: "FAQ", label: "FAQ" },
+  { value: "Meta Description", label: "Meta Description" },
 ];
 
 export default function ContentGenerator() {
@@ -85,37 +85,41 @@ export default function ContentGenerator() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-secondary)] text-[var(--text-primary)] relative">
+    <div className="min-h-screen bg-surface-secondary text-text-primary relative pb-16">
       <div className="mesh-grid fixed inset-0 pointer-events-none z-0 opacity-50" />
 
       <HeroSection
         title="AI Content Suite"
-        subtitle="Create premium SEO articles, compare models in Arena mode, or humanize AI outputs."
+        subtitle="Craft premium, SEO-optimized articles, perform side-by-side AI model comparisons, or humanize machine output for organic authenticity."
       />
 
       <Container className="py-8 relative z-10">
         {/* Tab Controls */}
-        <div className="flex items-center gap-1.5 bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border-light)] w-fit mb-8">
-          <button
-            onClick={() => setActiveTab("generate")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "generate"
-                ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-light)]"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            Generate Content
-          </button>
-          <button
-            onClick={() => setActiveTab("standalone-humanizer")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "standalone-humanizer"
-                ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-light)]"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            AI Text Humanizer
-          </button>
+        <div className="flex justify-center mb-10">
+          <div className="flex items-center gap-1.5 bg-surface-tertiary p-1.5 rounded-xl border border-border-light shadow-sm w-fit">
+            <button
+              onClick={() => setActiveTab("generate")}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                activeTab === "generate"
+                  ? "bg-surface-primary text-text-primary shadow-md ring-1 ring-border-light"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-primary/50"
+              }`}
+            >
+              <FileEdit size={16} />
+              Draft Engine
+            </button>
+            <button
+              onClick={() => setActiveTab("standalone-humanizer")}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                activeTab === "standalone-humanizer"
+                  ? "bg-surface-primary text-text-primary shadow-md ring-1 ring-border-light"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-primary/50"
+              }`}
+            >
+              <Wand2 size={16} />
+              Humanizer
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: GENERATOR & ARENA */}
@@ -123,42 +127,31 @@ export default function ContentGenerator() {
           <div className="space-y-8">
             <div className="grid lg:grid-cols-3 gap-8 items-start">
               {/* Controls Column */}
-              <Card className="lg:col-span-1 p-6 bg-[var(--bg-primary)] h-fit">
-                <form onSubmit={handleGenerate} className="space-y-5">
-                  <div className="space-y-2">
-                    <label htmlFor="gen-topic" className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                      Topic or Head Keyword
-                    </label>
-                    <input
-                      id="gen-topic"
-                      type="text"
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      placeholder="e.g. cloud security audit checklist"
-                      required
-                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all placeholder:text-[var(--text-muted)]"
-                    />
-                  </div>
+              <Card variant="elevated" className="lg:col-span-1 p-8 bg-surface-primary border-t-4 border-t-slb-blue-500">
+                <form onSubmit={handleGenerate} className="space-y-6">
+                  <Input
+                    label="Primary Topic"
+                    id="gen-topic"
+                    type="text"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    placeholder="e.g. cloud security audit checklist"
+                    required
+                    startIcon={Sparkles}
+                    helperText="What is the core theme of your content?"
+                  />
+
+                  <Select
+                    label="Content Format"
+                    id="gen-type"
+                    value={contentType}
+                    onChange={(e) => setContentType(e.target.value)}
+                    options={CONTENT_TYPES}
+                  />
 
                   <div className="space-y-2">
-                    <label htmlFor="gen-type" className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                      Content Type
-                    </label>
-                    <select
-                      id="gen-type"
-                      value={contentType}
-                      onChange={(e) => setContentType(e.target.value)}
-                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all"
-                    >
-                      {CONTENT_TYPES.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="gen-context" className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                      Additional Context (Keywords, instructions)
+                    <label htmlFor="gen-context" className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                      Advanced Context & Keywords
                     </label>
                     <textarea
                       id="gen-context"
@@ -166,178 +159,184 @@ export default function ContentGenerator() {
                       onChange={(e) => setContext(e.target.value)}
                       placeholder="Target keyword: security controls, compliance. Keep tone technical."
                       rows={3}
-                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all placeholder:text-[var(--text-muted)] font-sans"
+                      className="w-full bg-surface-secondary border border-border-light rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-slb-blue-500/50 transition-all placeholder:text-text-muted font-sans"
                     />
                   </div>
 
-                  {/* AI Arena Toggle */}
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)]">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-                        <LayoutGrid className="h-3.5 w-3.5 text-purple-500" />
-                        AI Arena Mode
-                      </h4>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Gemini vs DeepSeek side-by-side</p>
+                  {/* Feature Toggles */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-border-light bg-surface-secondary/50 hover:bg-surface-secondary transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 rounded-lg">
+                          <LayoutGrid className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary">Arena Mode</h4>
+                          <p className="text-[10px] text-text-muted">Compare Gemini vs DeepSeek</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={arena}
+                          onChange={(e) => {
+                            setArena(e.target.checked);
+                            if (e.target.checked) setHumanize(false);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-border-medium peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slb-blue-500"></div>
+                      </label>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={arena}
-                        onChange={(e) => {
-                          setArena(e.target.checked);
-                          if (e.target.checked) setHumanize(false); // mutually exclusive or unnecessary
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-[var(--border-medium)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--slb-blue-500)]"></div>
-                    </label>
+
+                    <div className={`flex items-center justify-between p-4 rounded-xl border border-border-light bg-surface-secondary/50 hover:bg-surface-secondary transition-colors ${arena ? "opacity-40 cursor-not-allowed pointer-events-none" : ""}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-yellow-500/10 rounded-lg">
+                          <Wand2 className="h-4 w-4 text-yellow-500 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary">Humanize</h4>
+                          <p className="text-[10px] text-text-muted">Bypass AI pattern detection</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={humanize}
+                          onChange={(e) => setHumanize(e.target.checked)}
+                          disabled={arena}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-border-medium peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slb-blue-500"></div>
+                      </label>
+                    </div>
                   </div>
 
-                  {/* Humanizer Toggle */}
-                  <div className={`flex items-center justify-between p-3 rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] ${arena ? "opacity-40 cursor-not-allowed pointer-events-none" : ""}`}>
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
-                        <Wand2 className="h-3.5 w-3.5 text-yellow-500 animate-pulse" />
-                        Humanize Draft
-                      </h4>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Rewrite output to bypass detection</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={humanize}
-                        onChange={(e) => setHumanize(e.target.checked)}
-                        disabled={arena}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-[var(--border-medium)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--slb-blue-500)]"></div>
-                    </label>
-                  </div>
-
-                  <button
+                  <Button
                     type="submit"
-                    disabled={loading || !topic.trim()}
-                    className="w-full bg-[var(--slb-navy)] text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-[var(--slb-navy-800)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
+                    variant="primary"
+                    fullWidth
+                    size="lg"
+                    loading={loading}
+                    disabled={!topic.trim()}
+                    startIcon={FileText}
+                    className="shadow-lg shadow-slb-blue-500/20"
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating Draft…
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        Generate Content
-                      </>
-                    )}
-                  </button>
+                    Draft Article
+                  </Button>
                 </form>
               </Card>
 
               {/* View Column */}
               <div className="lg:col-span-2 space-y-6">
                 {error && (
-                  <Card className="p-4 border-red-500/30 bg-red-500/10 text-red-400">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="h-5 w-5 shrink-0" />
-                      <p className="text-sm font-semibold">{error}</p>
-                    </div>
-                  </Card>
+                  <Alert variant="error" title="Generation Error" onClose={() => setError("")}>
+                    {error}
+                  </Alert>
                 )}
 
                 {loading ? (
-                  <Card className="p-12 flex flex-col items-center justify-center bg-[var(--bg-primary)]">
-                    <Loader2 className="h-10 w-10 animate-spin text-[var(--slb-blue-500)] mb-4" />
-                    <p className="text-sm text-[var(--text-muted)] italic font-semibold">Orchestrating AI content generation agent...</p>
+                  <Card className="p-20 flex flex-col items-center justify-center bg-surface-primary rounded-2xl border border-border-light shadow-sm">
+                    <Loader2 className="h-12 w-12 animate-spin text-slb-blue-500 mb-6" />
+                    <h3 className="text-lg font-bold text-text-primary">Agent Orchestration Active</h3>
+                    <p className="text-sm text-text-muted mt-2 text-center max-w-md">Our specialized Content Agents are research-drafting and optimizing your copy. This involves deep search and semantic alignment.</p>
                   </Card>
                 ) : resultData ? (
                   /* Output Rendering */
                   resultData.mode === "arena" ? (
                     <div className="space-y-6 animate-fadeInUp">
-                      <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] p-3 border border-[var(--border-light)] rounded-xl">
-                        <Sparkles className="h-5 w-5 text-purple-500" />
-                        <h3 className="font-bold text-sm">AI Content Arena Outcomes</h3>
+                      <div className="flex items-center gap-3 bg-surface-tertiary p-4 border border-border-light rounded-xl shadow-inner">
+                        <LayoutGrid className="h-5 w-5 text-purple-500" />
+                        <div>
+                          <h3 className="font-bold text-sm">Model Comparison Arena</h3>
+                          <p className="text-[10px] text-text-muted">Review side-by-side outputs to pick the best narrative.</p>
+                        </div>
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-6">
                         {/* Column 1: Gemini */}
-                        <div className="slb-card p-6 bg-[var(--bg-primary)] flex flex-col h-[600px]">
-                          <div className="flex items-center justify-between border-b border-[var(--border-light)] pb-3 mb-4">
-                            <span className="font-bold text-sm text-[var(--slb-blue-500)]">Gemini 2.0 Flash</span>
-                            <button
+                        <Card variant="outline" className="p-0 bg-surface-primary flex flex-col h-[650px] overflow-hidden border-t-4 border-t-slb-blue-500">
+                          <div className="flex items-center justify-between bg-surface-secondary/50 px-6 py-4 border-b border-border-light">
+                            <Badge variant="primary">Gemini 2.0 Flash</Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => triggerCopy(resultData.results["Gemini 2.0 Flash"], "gemini")}
-                              className="text-xs flex items-center gap-1 text-[var(--text-secondary)] border border-[var(--border-light)] px-2 py-1 rounded bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]"
+                              startIcon={copiedKey === "gemini" ? CheckSquare : Copy}
                             >
-                              {copiedKey === "gemini" ? <CheckSquare className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                              Copy
-                            </button>
+                              {copiedKey === "gemini" ? "Copied" : "Copy"}
+                            </Button>
                           </div>
-                          <div className="flex-1 overflow-y-auto pr-1 prose prose-sm dark:prose-invert max-w-none text-xs">
+                          <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none">
                             <ReactMarkdown className="markdown-content">
                               {resultData.results["Gemini 2.0 Flash"]}
                             </ReactMarkdown>
                           </div>
-                        </div>
+                        </Card>
 
                         {/* Column 2: DeepSeek */}
-                        <div className="slb-card p-6 bg-[var(--bg-primary)] flex flex-col h-[600px]">
-                          <div className="flex items-center justify-between border-b border-[var(--border-light)] pb-3 mb-4">
-                            <span className="font-bold text-sm text-purple-500">OpenRouter (DeepSeek/GPT)</span>
-                            <button
+                        <Card variant="outline" className="p-0 bg-surface-primary flex flex-col h-[650px] overflow-hidden border-t-4 border-t-purple-500">
+                          <div className="flex items-center justify-between bg-surface-secondary/50 px-6 py-4 border-b border-border-light">
+                            <Badge variant="neutral" className="bg-purple-500/10 text-purple-500">DeepSeek-V3</Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => triggerCopy(resultData.results["OpenRouter (DeepSeek/GPT)"], "deepseek")}
-                              className="text-xs flex items-center gap-1 text-[var(--text-secondary)] border border-[var(--border-light)] px-2 py-1 rounded bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]"
+                              startIcon={copiedKey === "deepseek" ? CheckSquare : Copy}
                             >
-                              {copiedKey === "deepseek" ? <CheckSquare className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                              Copy
-                            </button>
+                              {copiedKey === "deepseek" ? "Copied" : "Copy"}
+                            </Button>
                           </div>
-                          <div className="flex-1 overflow-y-auto pr-1 prose prose-sm dark:prose-invert max-w-none text-xs">
+                          <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none">
                             <ReactMarkdown className="markdown-content">
                               {resultData.results["OpenRouter (DeepSeek/GPT)"]}
                             </ReactMarkdown>
                           </div>
-                        </div>
+                        </Card>
                       </div>
                     </div>
                   ) : (
                     /* Single Output rendering */
-                    <div className="slb-card rounded-2xl overflow-hidden border border-[var(--border-light)] shadow-xl bg-[var(--bg-primary)] animate-fadeInUp">
-                      <div className="bg-[var(--bg-tertiary)] px-6 py-4 border-b border-[var(--border-light)] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="text-[var(--slb-blue-500)] h-5 w-5" />
-                          <span className="font-bold uppercase tracking-widest text-xs">Generated Output</span>
-                          {resultData.humanized && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 font-bold border border-green-500/20">HUMANIZED</span>
-                          )}
+                    <Card variant="elevated" className="overflow-hidden border-border-light shadow-xl bg-surface-primary animate-fadeInUp p-0 border-t-4 border-t-slb-blue-500">
+                      <div className="bg-surface-secondary/50 px-8 py-5 border-b border-border-light flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-slb-blue-500/10 rounded-lg text-slb-blue-500">
+                            <Sparkles size={18} />
+                          </div>
+                          <div>
+                            <span className="font-bold uppercase tracking-widest text-[10px] text-text-muted">Draft Outcome</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <h3 className="font-bold text-sm">Generated Content</h3>
+                              {resultData.humanized && (
+                                <Badge variant="success" size="sm" className="text-[8px]">HUMANIZED</Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <button
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={() => triggerCopy(resultData.content, "single")}
-                          className="text-xs flex items-center gap-1.5 text-[var(--text-secondary)] border border-[var(--border-light)] px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] font-medium transition-colors"
+                          startIcon={copiedKey === "single" ? CheckSquare : Copy}
                         >
-                          {copiedKey === "single" ? (
-                            <>
-                              <CheckSquare className="h-3.5 w-3.5 text-green-500" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" />
-                              Copy Draft
-                            </>
-                          )}
-                        </button>
+                          {copiedKey === "single" ? "Copied" : "Copy Article"}
+                        </Button>
                       </div>
-                      <div className="p-8 prose prose-slate dark:prose-invert max-w-none">
-                        <ReactMarkdown className="markdown-content">
+                      <div className="p-10 prose prose-slate dark:prose-invert max-w-none bg-surface-primary">
+                        <ReactMarkdown className="markdown-content font-sans leading-relaxed">
                           {resultData.content}
                         </ReactMarkdown>
                       </div>
-                    </div>
+                    </Card>
                   )
                 ) : (
-                  <Card className="p-12 text-center bg-[var(--bg-primary)]">
-                    <p className="text-sm text-[var(--text-muted)]">Run the content generation form on the left to review outputs.</p>
-                  </Card>
+                  <div className="h-full flex flex-col items-center justify-center p-20 bg-surface-primary rounded-2xl border border-dashed border-border-medium opacity-60">
+                    <div className="p-4 bg-surface-secondary rounded-full mb-4">
+                      <FileText size={48} className="text-text-muted" />
+                    </div>
+                    <h3 className="text-lg font-bold text-text-muted">No Content Generated</h3>
+                    <p className="text-sm text-text-muted mt-2 text-center max-w-xs">Fill out the parameters on the left and click "Draft Article" to begin.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -346,82 +345,91 @@ export default function ContentGenerator() {
 
         {/* TAB 2: STANDALONE HUMANIZER */}
         {activeTab === "standalone-humanizer" && (
-          <div className="space-y-8 animate-fadeInUp">
-            <Card className="p-6 bg-[var(--bg-primary)]">
-              <h2 className="text-xl font-bold font-display mb-4 flex items-center gap-2">
-                <Wand2 className="text-yellow-500 h-5 w-5" />
-                AI Content Standalone Humanizer
-              </h2>
-              <p className="text-xs text-[var(--text-secondary)] mb-6">
-                Paste any AI-generated article or copy text blocks below to increase perplexity/burstiness and remove robotic AI patterns.
-              </p>
+          <div className="space-y-8 animate-fadeInUp max-w-5xl mx-auto">
+            <Card variant="elevated" className="p-10 bg-surface-primary border-t-4 border-t-yellow-500">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-yellow-500/10 rounded-xl text-yellow-500">
+                  <Wand2 size={32} className="animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold font-display">AI Text Humanizer</h2>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Increase perplexity, vary sentence structures, and remove machine-like patterns.
+                  </p>
+                </div>
+              </div>
 
-              <form onSubmit={handleHumanizeStandalone} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
+              <form onSubmit={handleHumanizeStandalone} className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-8">
                   {/* Left Column: Input */}
-                  <div className="space-y-2 flex flex-col">
-                    <label htmlFor="hum-input" className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                      AI Generated Text Input
+                  <div className="space-y-3 flex flex-col">
+                    <label htmlFor="hum-input" className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+                      <FileText size={14} />
+                      AI Generated Input
                     </label>
                     <textarea
                       id="hum-input"
                       value={humanizeInput}
                       onChange={(e) => setHumanizeInput(e.target.value)}
-                      placeholder="Paste your ChatGPT or Claude text here..."
+                      placeholder="Paste robotic text here..."
                       rows={14}
                       required
-                      className="w-full flex-1 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all font-mono"
+                      className="w-full flex-1 bg-surface-secondary border border-border-light rounded-xl px-4 py-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-slb-blue-500/50 transition-all font-sans leading-relaxed"
                     />
                   </div>
 
                   {/* Right Column: Output */}
-                  <div className="space-y-2 flex flex-col">
+                  <div className="space-y-3 flex flex-col">
                     <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                        Humanized Output Preview
+                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+                        <Sparkles size={14} className="text-yellow-500" />
+                        Humanized Outcome
                       </label>
                       {humanizedOutput && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => triggerCopy(humanizedOutput, "humanized-standalone")}
-                          className="text-[10px] text-[var(--slb-blue-500)] hover:underline flex items-center gap-1"
+                          startIcon={copiedKey === "humanized-standalone" ? CheckSquare : Copy}
+                          className="text-[10px]"
                         >
-                          {copiedKey === "humanized-standalone" ? <CheckSquare className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                          Copy Output
-                        </button>
+                          {copiedKey === "humanized-standalone" ? "Copied" : "Copy Output"}
+                        </Button>
                       )}
                     </div>
                     {humanizerLoading ? (
-                      <div className="w-full flex-1 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg p-6 flex flex-col items-center justify-center min-h-[300px]">
-                        <Loader2 className="h-8 w-8 animate-spin text-[var(--slb-blue-500)] mb-3" />
-                        <p className="text-xs text-[var(--text-muted)] font-semibold">Humanizing style factors...</p>
+                      <div className="w-full flex-1 bg-surface-secondary/50 border border-border-light rounded-xl p-10 flex flex-col items-center justify-center min-h-[400px]">
+                        <Loader2 className="h-12 w-12 animate-spin text-slb-blue-500 mb-6" />
+                        <h4 className="text-sm font-bold text-text-primary animate-pulse">Analyzing Style Factor...</h4>
+                        <p className="text-xs text-text-muted mt-2 text-center max-w-[200px]">Adjusting burstiness and semantic variance for organic feel.</p>
                       </div>
                     ) : humanizedOutput ? (
-                      <div className="w-full flex-1 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg p-4 text-sm text-[var(--text-primary)] overflow-y-auto max-h-[320px] md:max-h-none min-h-[300px] prose prose-sm dark:prose-invert">
+                      <div className="w-full flex-1 bg-surface-primary border border-border-light rounded-xl p-6 text-sm text-text-secondary overflow-y-auto min-h-[400px] shadow-inner prose prose-sm dark:prose-invert">
                         <ReactMarkdown>{humanizedOutput}</ReactMarkdown>
                       </div>
                     ) : (
-                      <div className="w-full flex-1 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg p-6 flex items-center justify-center text-xs text-[var(--text-muted)] italic min-h-[300px]">
-                        Submit form to review humanized drafts.
+                      <div className="w-full flex-1 bg-surface-secondary/20 border border-dashed border-border-medium rounded-xl p-10 flex flex-col items-center justify-center text-text-muted min-h-[400px]">
+                        <Wand2 size={40} className="mb-4 opacity-20" />
+                        <p className="text-sm italic text-center">Submit content to generate humanized variants.</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-4 justify-between pt-4 border-t border-[var(--border-light)]">
+                <div className="flex flex-col sm:flex-row items-center gap-6 justify-between pt-8 border-t border-border-light">
                   {/* Intensity Choice */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Intensity:</span>
-                    <div className="flex bg-[var(--bg-tertiary)] p-1 rounded-lg border border-[var(--border-light)]">
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-text-muted uppercase tracking-widest font-bold">Intensity Scale:</span>
+                    <div className="flex bg-surface-tertiary p-1 rounded-xl border border-border-light shadow-sm">
                       {["low", "medium", "high"].map((level) => (
                         <button
                           key={level}
                           type="button"
                           onClick={() => setHumanizeIntensity(level)}
-                          className={`px-3 py-1 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
+                          className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
                             humanizeIntensity === level
-                              ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
-                              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                              ? "bg-surface-primary text-slb-blue-500 shadow-md ring-1 ring-border-light"
+                              : "text-text-secondary hover:text-text-primary"
                           }`}
                         >
                           {level}
@@ -431,26 +439,23 @@ export default function ContentGenerator() {
                   </div>
 
                   {humanizerError && (
-                    <span className="text-xs text-red-400 font-semibold">{humanizerError}</span>
+                    <div className="flex items-center gap-2 text-red-500 text-xs font-bold">
+                      <AlertCircle size={14} />
+                      {humanizerError}
+                    </div>
                   )}
 
-                  <button
+                  <Button
                     type="submit"
-                    disabled={humanizerLoading || !humanizeInput.trim()}
-                    className="slb-btn slb-btn-primary w-full sm:w-auto px-6 py-2.5 font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm"
+                    variant="primary"
+                    size="lg"
+                    loading={humanizerLoading}
+                    disabled={!humanizeInput.trim()}
+                    startIcon={Wand2}
+                    className="w-full sm:w-auto px-10 shadow-lg shadow-yellow-500/10"
                   >
-                    {humanizerLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Humanizing Style...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="h-4 w-4" />
-                        Apply Humanizer
-                      </>
-                    )}
-                  </button>
+                    Bypass AI Detection
+                  </Button>
                 </div>
               </form>
             </Card>

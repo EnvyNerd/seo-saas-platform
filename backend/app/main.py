@@ -2,6 +2,8 @@ from fastapi import FastAPI, APIRouter, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.api.routes.seo import router as seo_router
 from app.api.routes.ai import router as ai_router
@@ -36,6 +38,24 @@ api_router.include_router(analytics_router, prefix="/analytics", tags=["Analytic
 api_router.include_router(deepseek_router, prefix="/deepseek", tags=["DeepSeek"])
 
 app.include_router(api_router)
+
+# Mount Static Files for Screenshots
+# Try multiple possible locations for the data/screenshots directory
+base_dir = os.getcwd()
+screenshot_dir = os.path.join(base_dir, "data", "screenshots")
+
+if not os.path.exists(screenshot_dir):
+    # Try relative to this file
+    screenshot_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "screenshots"))
+
+if not os.path.exists(screenshot_dir):
+    # Try inside backend/data/screenshots
+    screenshot_dir = os.path.abspath(os.path.join(base_dir, "backend", "data", "screenshots"))
+
+if not os.path.exists(screenshot_dir):
+    os.makedirs(screenshot_dir, exist_ok=True)
+
+app.mount("/screenshots", StaticFiles(directory=screenshot_dir), name="screenshots")
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

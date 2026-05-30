@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Globe, Loader2, AlertCircle, Copy, CheckSquare, Sparkles, Layers } from "lucide-react";
+import { Globe, Loader2, AlertCircle, Copy, CheckSquare, Sparkles, Layers, ListFilter } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
-import { Card, Container } from "../components/ui";
-import ToolPageShell from "../components/ToolPageShell";
+import { Card, Container, Button, Input, Badge, Alert, HeroSection } from "../components/ui";
 
 export default function KeywordGenerator() {
   const [mode, setMode] = useState("single"); // "single" or "batch"
@@ -75,206 +74,205 @@ export default function KeywordGenerator() {
   };
 
   return (
-    <ToolPageShell
-      title="AI Keyword Generator"
-      subtitle="Examine organic search queries, LSI phrases, and semantic variants for target search domains."
-      icon={Globe}
-    >
-      {/* Switch Mode Controls */}
-      <div className="flex items-center gap-1.5 bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border-light)] w-fit mb-8 relative z-10">
-        <button
-          onClick={() => { setMode("single"); setError(""); }}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-            mode === "single"
-              ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-light)]"
-              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          }`}
-        >
-          Single Topic
-        </button>
-        <button
-          onClick={() => { setMode("batch"); setBatchError(""); }}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-            mode === "batch"
-              ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-light)]"
-              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          }`}
-        >
-          Batch Keywords
-        </button>
-      </div>
+    <div className="min-h-screen bg-surface-secondary text-text-primary relative pb-16">
+      <div className="mesh-grid fixed inset-0 pointer-events-none z-0 opacity-50" />
 
-      {/* SINGLE TOPIC FORM */}
-      {mode === "single" && (
-        <div className="space-y-6 relative z-10">
-          <form
-            onSubmit={handleSingleSubmit}
-            className="rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] p-6 shadow-sm"
-          >
-            <label htmlFor="keyword-topic" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Topic or niche
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                id="keyword-topic"
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. sustainable home gardening"
-                required
-                className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all"
-              />
-              <button
-                type="submit"
-                disabled={loading || !topic.trim()}
-                className="slb-btn slb-btn-primary px-6 py-3 flex items-center justify-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Generate Keywords
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+      <HeroSection
+        title="Keyword Intelligence"
+        subtitle="Discover high-intent search terms, LSI phrases, and semantic variants powered by advanced AI Agents."
+      />
 
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 animate-shake">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          {results && (
-            <div className="rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] p-6 shadow-sm animate-fadeInUp">
-              <div className="flex items-center justify-between border-b border-[var(--border-light)] pb-4 mb-4">
-                <h2 className="text-lg font-bold font-display">Keyword Results Map</h2>
-                <button
-                  onClick={() => triggerCopy(results, "single")}
-                  className="text-xs flex items-center gap-1.5 text-[var(--text-secondary)] border border-[var(--border-light)] px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] font-medium transition-colors"
-                >
-                  {copiedKey === "single" ? (
-                    <>
-                      <CheckSquare className="h-3.5 w-3.5 text-green-500" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      Copy List
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed">
-                <ReactMarkdown className="markdown-content">
-                  {results}
-                </ReactMarkdown>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* BATCH TOPIC FORM */}
-      {mode === "batch" && (
-        <div className="space-y-6 relative z-10">
-          <form
-            onSubmit={handleBatchSubmit}
-            className="rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] p-6 shadow-sm"
-          >
-            <label htmlFor="batch-topics" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Topics (comma or newline separated)
-            </label>
-            <textarea
-              id="batch-topics"
-              value={batchInput}
-              onChange={(e) => setBatchInput(e.target.value)}
-              placeholder="sustainable home gardening&#10;organic seed packets&#10;backyard composting"
-              rows={4}
-              required
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--slb-blue-500)]/50 transition-all font-mono"
-            />
+      <Container className="py-8 relative z-10">
+        {/* Toggle Mode Controls */}
+        <div className="flex justify-center mb-10">
+          <div className="flex items-center gap-1.5 bg-surface-tertiary p-1.5 rounded-xl border border-border-light shadow-sm w-fit">
             <button
-              type="submit"
-              disabled={batchLoading || !batchInput.trim()}
-              className="slb-btn slb-btn-primary px-6 py-2.5 flex items-center justify-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all mt-4 text-sm"
+              onClick={() => { setMode("single"); setError(""); }}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                mode === "single"
+                  ? "bg-surface-primary text-text-primary shadow-md ring-1 ring-border-light"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-primary/50"
+              }`}
             >
-              {batchLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating Batch…
-                </>
-              ) : (
-                <>
-                  <Layers className="h-4 w-4" />
-                  Generate Batch Keywords
-                </>
-              )}
+              <Sparkles size={16} />
+              Single Topic
             </button>
-          </form>
-
-          {batchError && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 animate-shake">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {batchError}
-            </div>
-          )}
-
-          {batchLoading && batchResults.length === 0 && (
-            <Card className="p-12 flex flex-col items-center justify-center bg-[var(--bg-primary)]">
-              <Loader2 className="h-10 w-10 animate-spin text-[var(--slb-blue-500)] mb-4" />
-              <p className="text-sm text-[var(--text-muted)] font-semibold">Generating keywords for multiple topics with Gemini Agent...</p>
-            </Card>
-          )}
-
-          {batchResults.length > 0 && (
-            <div className="space-y-6">
-              {batchResults.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-[var(--border-light)] bg-[var(--bg-primary)] p-6 shadow-sm animate-fadeInUp"
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  <div className="flex items-center justify-between border-b border-[var(--border-light)] pb-4 mb-4">
-                    <h3 className="font-bold font-display text-sm text-[var(--slb-blue-500)] flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      Topic: {item.topic}
-                    </h3>
-                    <button
-                      onClick={() => triggerCopy(item.keywords, `batch-${idx}`)}
-                      className="text-xs flex items-center gap-1.5 text-[var(--text-secondary)] border border-[var(--border-light)] px-2.5 py-1.5 rounded bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] font-medium transition-colors"
-                    >
-                      {copiedKey === `batch-${idx}` ? (
-                        <>
-                          <CheckSquare className="h-3 w-3 text-green-500" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3 w-3" />
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed">
-                    <ReactMarkdown className="markdown-content">
-                      {item.keywords}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            <button
+              onClick={() => { setMode("batch"); setBatchError(""); }}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 ${
+                mode === "batch"
+                  ? "bg-surface-primary text-text-primary shadow-md ring-1 ring-border-light"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-primary/50"
+              }`}
+            >
+              <Layers size={16} />
+              Batch Topics
+            </button>
+          </div>
         </div>
-      )}
-    </ToolPageShell>
+
+        {/* SINGLE TOPIC FORM */}
+        {mode === "single" && (
+          <div className="space-y-8 animate-fadeInUp max-w-4xl mx-auto">
+            <Card variant="elevated" className="p-8 bg-surface-primary border-t-4 border-t-slb-blue-500">
+              <form onSubmit={handleSingleSubmit} className="space-y-6">
+                <Input
+                  label="Target Topic or Niche"
+                  id="keyword-topic"
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. sustainable home gardening"
+                  required
+                  startIcon={ListFilter}
+                  helperText="Describe your industry or specific topic to generate semantic keywords."
+                />
+                
+                <Button
+                  type="submit"
+                  variant="primary"
+                  fullWidth
+                  size="lg"
+                  loading={loading}
+                  disabled={!topic.trim()}
+                  startIcon={Sparkles}
+                  className="shadow-lg shadow-slb-blue-500/20"
+                >
+                  Generate Semantic Strategy
+                </Button>
+              </form>
+            </Card>
+
+            {error && (
+              <Alert variant="error" title="Generation Failed" onClose={() => setError("")}>
+                {error}
+              </Alert>
+            )}
+
+            {results && (
+              <Card variant="elevated" className="p-8 bg-surface-primary border-border-light overflow-hidden shadow-xl animate-fadeInUp">
+                <div className="flex flex-col sm:flex-row items-center justify-between border-b border-border-light pb-6 mb-6 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slb-blue-500/10 rounded-lg text-slb-blue-500">
+                      <Sparkles size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold font-display">Keyword Results Map</h2>
+                      <p className="text-xs text-text-muted mt-1">Semantic clusters and search intent analysis</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => triggerCopy(results, "single")}
+                    startIcon={copiedKey === "single" ? CheckSquare : Copy}
+                  >
+                    {copiedKey === "single" ? "Copied to Clipboard" : "Copy Keyword List"}
+                  </Button>
+                </div>
+                
+                <div className="prose prose-slate dark:prose-invert max-w-none text-text-secondary leading-relaxed bg-surface-secondary/30 p-6 rounded-xl border border-border-light shadow-inner">
+                  <ReactMarkdown className="markdown-content font-sans">
+                    {results}
+                  </ReactMarkdown>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* BATCH TOPIC FORM */}
+        {mode === "batch" && (
+          <div className="space-y-8 animate-fadeInUp max-w-4xl mx-auto">
+            <Card variant="elevated" className="p-8 bg-surface-primary border-t-4 border-t-slb-blue-500">
+              <form onSubmit={handleBatchSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="batch-topics" className="block text-sm font-bold text-text-primary">
+                    Enter Topics List
+                  </label>
+                  <p className="text-xs text-text-muted mb-3">One topic per line or comma-separated for bulk processing.</p>
+                  <textarea
+                    id="batch-topics"
+                    value={batchInput}
+                    onChange={(e) => setBatchInput(e.target.value)}
+                    placeholder="sustainable home gardening&#10;organic seed packets&#10;backyard composting"
+                    rows={5}
+                    required
+                    className="w-full bg-surface-secondary border border-border-light rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-slb-blue-500/50 transition-all placeholder:text-text-muted font-mono"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  fullWidth
+                  size="lg"
+                  loading={batchLoading}
+                  disabled={!batchInput.trim()}
+                  startIcon={Layers}
+                >
+                  Start Batch Generation
+                </Button>
+              </form>
+            </Card>
+
+            {batchError && (
+              <Alert variant="error" title="Batch Error" onClose={() => setBatchError("")}>
+                {batchError}
+              </Alert>
+            )}
+
+            {batchLoading && batchResults.length === 0 && (
+              <div className="p-20 flex flex-col items-center justify-center bg-surface-primary rounded-2xl border border-border-light shadow-sm">
+                <Loader2 className="h-12 w-12 animate-spin text-slb-blue-500 mb-6" />
+                <h3 className="text-lg font-bold text-text-primary">Bulk Brainstorming Active</h3>
+                <p className="text-sm text-text-muted mt-2 text-center max-w-md">Our AI Agents are parallel-processing your topics to find the best organic opportunities...</p>
+              </div>
+            )}
+
+            {batchResults.length > 0 && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between bg-surface-primary p-4 rounded-xl border border-border-light shadow-sm">
+                  <Badge variant="info" size="lg">Batch Completed: {batchResults.length} Topics</Badge>
+                  <p className="text-xs text-text-muted font-medium italic">Showing deep-dive reports for each niche.</p>
+                </div>
+                
+                {batchResults.map((item, idx) => (
+                  <Card
+                    key={idx}
+                    variant="outline"
+                    className="p-8 bg-surface-primary border-border-light overflow-hidden hover:shadow-lg transition-all animate-fadeInUp border-l-4 border-l-slb-blue-500"
+                    style={{ animationDelay: `${idx * 150}ms` }}
+                  >
+                    <div className="flex items-center justify-between border-b border-border-light pb-4 mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-slb-blue-500/10 rounded text-slb-blue-500">
+                          <Sparkles size={16} />
+                        </div>
+                        <h3 className="font-bold font-display text-text-primary">
+                          Topic: <span className="text-slb-blue-500">{item.topic}</span>
+                        </h3>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => triggerCopy(item.keywords, `batch-${idx}`)}
+                        startIcon={copiedKey === `batch-${idx}` ? CheckSquare : Copy}
+                      >
+                        {copiedKey === `batch-${idx}` ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-text-secondary leading-relaxed bg-surface-secondary/20 p-5 rounded-xl border border-border-light/50">
+                      <ReactMarkdown className="markdown-content font-sans">
+                        {item.keywords}
+                      </ReactMarkdown>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Container>
+    </div>
   );
 }
