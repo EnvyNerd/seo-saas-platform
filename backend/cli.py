@@ -112,7 +112,10 @@ def audit(url, export, schema):
     score_color = "green" if result['seo_score'] > 80 else "yellow" if result['seo_score'] > 50 else "red"
     table.add_row("SEO Score", f"[{score_color}]{result['seo_score']}/100[/{score_color}]")
     table.add_row("Title", result['title'])
-    table.add_row("Meta Description", result['meta_description'][:100] + "..." if len(result['meta_description']) > 100 else result['meta_description'])
+    meta_description = result.get('meta_description') or "Missing"
+    if len(meta_description) > 100:
+        meta_description = meta_description[:100] + "..."
+    table.add_row("Meta Description", meta_description)
     table.add_row("H1 Tags", ", ".join(result['h1_tags']) if result['h1_tags'] else "None")
     table.add_row("Total Links", str(result['total_links']))
     table.add_row("Missing Alt Images", f"[red]{result['missing_alt_images']}[/red]" if result['missing_alt_images'] > 0 else "0")
