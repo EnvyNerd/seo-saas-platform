@@ -395,70 +395,304 @@ def list_config():
 @cli.command()
 @click.argument('url')
 @click.option('--export', help="Export result to JSON file.")
+@click.option('--export-md', help="Export formatted report to Markdown file.")
 @click.option('--schema', is_flag=True, help="Generate JSON-LD Schema Markup.")
+@click.option('--no-ai', is_flag=True, help="Skip AI recommendations for faster results.")
 @click.option('--project-id', '-p', type=int, help="Associate report with a project ID.")
-def audit(url, export, schema, project_id):
-    """Run a Deep SEO audit on a website URL (Playwright-powered)."""
+def audit(url, export, export_md, schema, no_ai, project_id):
+    """Run a comprehensive 6-pillar SEO audit on a website URL (Playwright-powered)."""
+    import questionary
+    from app.agents.deep_audit_agent import run_deep_audit_agent, format_audit_report, _score_to_grade
+    from app.services.gemini_service import generate_schema_markup
+
     with console.status(f"[bold green]Deep Auditing {url} (Rendering JS)...", spinner="earth"):
-        result = audit_website(url)
-    
-    if "error" in result:
-        console.print(Panel(f"[red]Error: {result['error']}[/red]", title="Audit Failed"))
+        result = run_deep_audit_agent(url, ai_recommendations=not no_ai)
+
+    if result.get("error") and not result.get("pillars"):
+        console.print(Panel(f"[red]Audit Error: {result['error']}[/red]", title="Audit Failed"))
         return
 
-    table = Table(title=f"SEO Audit: {url}", box=box.DOUBLE_EDGE)
-    table.add_column("Metric", style="cyan")
-    table.add_column("Value", style="white")
+    # ── Summary Header
+    overall = result.get("overall_score", 0)
+    grade = result.get("overall_grade", "?")
+    grade_color = "green" if overall >= 70 else "yellow" if overall >= 50 else "red"
 
-    score_color = "green" if result['seo_score'] > 80 else "yellow" if result['seo_score'] > 50 else "red"
-    table.add_row("SEO Score", f"[{score_color}]{result['seo_score']}/100[/{score_color}]")
-    table.add_row("Title", result['title'])
-    table.add_row("Meta Description", result['meta_description'][:100] + "..." if len(result['meta_description']) > 100 else result['meta_description'])
-    table.add_row("H1 Tags", ", ".join(result['h1_tags']) if result['h1_tags'] else "None")
-    table.add_row("Total Links", str(result['total_links']))
-    table.add_row("Missing Alt Images", f"[red]{result['missing_alt_images']}[/red]" if result['missing_alt_images'] > 0 else "0")
-    table.add_row("Screenshot", result['screenshot_path'])
+    console.print(Rule(f"SEO AUDIT: {url}", style="bold blue"))
 
-    console.print(table)
-    
+    # Quick metrics table (backward-compatible with old output style)
+    meta_table = Table(title="Page Overview", box=box.DOUBLE_EDGE)
+    meta_table.add_column("Metric", style="cyan")
+    meta_table.add_column("Value", style="white")
+
+    meta_table.add_row("SEO Score", f"[{grade_color}]{overall}/100 (Grade: {grade})[/{grade_color}]")
+    meta_table.add_row("Response Time", f"{result.get('response_time_ms', 'N/A')}ms")
+    meta_table.add_row("HTTP Status", str(result.get("status_code", "N/A")))
+    title_val = result.get("technical_meta", {}).get("title") or "Missing"
+    meta_table.add_row("Title", title_val[:80] + ("..." if len(str(title_val)) > 80 else ""))
+
+    meta_desc = ""
+    for p in result.get("pillars", []):
+        for f in p.get("findings", []):
+            if "Meta description" in f and not f.startswith("❌"):
+                meta_desc = f
+                break
+    if not meta_desc:
+        # Try to get from content pillar
+        for p in result.get("pillars", []):
+            if "Content" in p.get("pillar", ""):
+                for f in p.get("findings", []):
+                    if "meta description" in f.lower() and "✅" in f:
+                        meta_desc = f[2:].strip()
+                        break
+    meta_table.add_row("Meta Description", (meta_desc[:100] + "..." if len(meta_desc) > 100 else meta_desc) if meta_desc else "See pillar details")
+
+    h1_val = "See pillar details"
+    for p in result.get("pillars", []):
+        if "Content" in p.get("pillar", ""):
+            for f in p.get("findings", []):
+                if "H1" in f and ("✅" in f or "❌" in f):
+                    h1_val = f[2:].strip()[:80]
+                    break
+    meta_table.add_row("H1 Tags", h1_val)
+
+    meta_table.add_row("Total Links", str(result.get("metadata", {}).get("total_links", "N/A")))
+    meta_table.add_row("Missing Alt Images", str(result.get("metadata", {}).get("missing_alt", "See pillar 3")))
+    meta_table.add_row("Word Count", str(result.get("metadata", {}).get("word_count", "N/A")))
+    meta_table.add_row("Screenshot", result.get("technical_meta", {}).get("screenshot_path", "N/A"))
+
+    console.print(meta_table)
+
+    # ── Pillar Score Table
+    pillar_table = Table(title="6-Pillar SEO Analysis", box=box.ROUNDED)
+    pillar_table.add_column("#", style="dim", width=3)
+    pillar_table.add_column("Pillar", style="cyan")
+    pillar_table.add_column("Score", style="bold")
+    pillar_table.add_column("Grade", width=6)
+    pillar_table.add_column("# Issues", width=8)
+
+    for i, p in enumerate(result.get("pillars", []), 1):
+        p_score = p["score"]
+        p_grade = _score_to_grade(p_score)
+        p_color = "green" if p_score >= 70 else "yellow" if p_score >= 50 else "red"
+        issue_count = sum(1 for f in p["findings"] if f.startswith("❌") or f.startswith("🚫") or f.startswith("🐌"))
+        warn_count = sum(1 for f in p["findings"] if f.startswith("⚠️"))
+        issues_str = f"[red]{issue_count}[/red]" if issue_count > 0 else (f"[yellow]{warn_count}[/yellow]" if warn_count > 0 else "[green]0[/green]")
+
+        pillar_table.add_row(
+            str(i),
+            p["pillar"],
+            f"[{p_color}]{p_score}/100[/{p_color}]",
+            f"[{p_color}]{p_grade}[/{p_color}]",
+            issues_str,
+        )
+
+    console.print(pillar_table)
+
+    # ── Detailed showing (ask user interactively which pillar(s) to expand)
+    pillar_choices = ["Show All Pillars"] + [f"{i+1}. {p['pillar']} ({p['score']}/100)" for i, p in enumerate(result.get("pillars", []))] + ["Skip Details"]
+    selected = questionary.select(
+        "Which pillar details would you like to see?",
+        choices=pillar_choices,
+    ).ask()
+
+    if selected and selected != "Skip Details":
+        target_pillars = result.get("pillars", [])
+        if selected != "Show All Pillars":
+            idx = int(selected.split(".")[0]) - 1
+            target_pillars = [target_pillars[idx]]
+
+        for p in target_pillars:
+            p_score = p["score"]
+            p_color = "green" if p_score >= 70 else "yellow" if p_score >= 50 else "red"
+            console.print(f"\n[bold {p_color}]{p['pillar']} — {p_score}/100[/bold {p_color}]")
+            for finding in p["findings"]:
+                console.print(f"  {finding}")
+
+    # ── Schema Markup
     if schema:
-        with console.status("[bold green]Generating Schema Markup...", spinner="dots"):
-            markup = generate_schema_markup(result)
-        console.print(Panel(markup, title="JSON-LD Schema Markup", border_style="yellow"))
+        with console.status("[bold green]Generating JSON-LD Schema Markup...", spinner="dots"):
+            try:
+                # Build a focused schema request from the audit data
+                schema_data = {
+                    "url": url,
+                    "title": result.get("technical_meta", {}).get("title", ""),
+                    "description": meta_desc or "",
+                    "pillar_scores": {p["pillar"]: p["score"] for p in result.get("pillars", [])},
+                }
+                markup = generate_schema_markup(schema_data)
+                console.print(Panel(markup, title="JSON-LD Schema Markup", border_style="yellow"))
+            except Exception as e:
+                console.print(f"[yellow]Schema generation skipped: {str(e)}[/yellow]")
 
+    # ── AI Recommendations
+    if result.get("ai_recommendations") and not no_ai:
+        console.print(Rule("AI AUDIT RECOMMENDATIONS", style="bold green"))
+        console.print(Markdown(result["ai_recommendations"]))
+
+    # ── Export
+    if export:
+        export_result(result, export)
+
+    if export_md:
+        report_md = format_audit_report(result)
+        try:
+            with open(export_md, 'w', encoding='utf-8') as f:
+                f.write(report_md)
+            console.print(f"[green]Markdown report exported to {export_md}[/green]")
+        except Exception as e:
+            console.print(f"[red]Export failed: {str(e)}[/red]")
+
+    # ── Save to project
     if project_id:
-        async def save_report():
+        async def save_audit():
             async with AsyncSessionLocal() as session:
                 proj = await session.get(Project, project_id)
                 if not proj:
-                    console.print(f"[red]Error: Project with ID {project_id} does not exist.[/red]")
+                    console.print(f"[red]Error: Project {project_id} not found.[/red]")
                     return None
-                
-                from app.services.gemini_service import generate_seo_recommendations
-                with console.status("[bold green]Generating AI SEO recommendations...", spinner="dots"):
-                    try:
-                        recs = generate_seo_recommendations(result)
-                    except Exception as e:
-                        recs = f"Error generating recommendations: {str(e)}"
-                
                 report = SEOReport(
                     project_id=project_id,
                     url=url,
-                    seo_score=result['seo_score'],
+                    seo_score=int(result.get("overall_score", 0)),
                     data=result,
-                    ai_recommendations=recs
+                    ai_recommendations=result.get("ai_recommendations", ""),
                 )
                 session.add(report)
                 await session.commit()
                 await session.refresh(report)
                 return report.id
 
-        report_id = asyncio.run(save_report())
+        report_id = asyncio.run(save_audit())
         if report_id:
-            console.print(f"[bold green]Report saved to Database under Project {project_id} with Report ID: {report_id}[/bold green]")
+            console.print(f"[bold green]Report saved to Project {project_id}, Report ID: {report_id}[/bold green]")
 
+
+# ─── DEEP 6-PILLAR SEO AUDIT ──────────────────────────────────────────
+
+@cli.command()
+@click.argument('url')
+@click.option('--pillar', '-p', type=str, default=None,
+              help="Show details for a specific pillar number (1-6).")
+@click.option('--export', help="Export full audit report to JSON file.")
+@click.option('--export-md', help="Export formatted report to Markdown file.")
+@click.option('--no-ai', is_flag=True, help="Skip AI recommendations for faster results.")
+@click.option('--project-id', '-j', type=int, help="Associate report with a project ID.")
+def deep_audit(url, pillar, export, export_md, no_ai, project_id):
+    """Run a comprehensive 6-pillar SEO audit on a website URL."""
+    from app.agents.deep_audit_agent import run_deep_audit_agent, format_audit_report, _score_to_grade
+
+    with console.status(f"[bold green]Running 6-Pillar Deep Audit on {url}...", spinner="earth"):
+        result = run_deep_audit_agent(url, ai_recommendations=not no_ai)
+
+    if result.get("error") and not result.get("pillars"):
+        console.print(Panel(f"[red]Audit Error: {result['error']}[/red]", title="Deep Audit Failed"))
+        return
+
+    # ── Header
+    overall = result.get("overall_score", 0)
+    grade = result.get("overall_grade", "?")
+    grade_color = "green" if overall >= 70 else "yellow" if overall >= 50 else "red"
+
+    console.print(Rule(f"DEEP SEO AUDIT: {url}", style="bold blue"))
+    console.print(Panel(
+        f"[bold cyan]Overall Score:[/bold cyan] [{grade_color}]{overall}/100[/{grade_color}]  "
+        f"[bold cyan]Grade:[/bold cyan] [{grade_color}]{grade}[/{grade_color}]\n\n"
+        f"[dim]Response Time: {result.get('response_time_ms', 'N/A')}ms | "
+        f"Status: {result.get('status_code', 'N/A')} | "
+        f"Words: {result.get('metadata', {}).get('word_count', 'N/A')} | "
+        f"Links: {result.get('metadata', {}).get('total_links', 'N/A')} | "
+        f"Images: {result.get('metadata', {}).get('total_images', 'N/A')}[/dim]",
+        title="SEO Health Summary",
+        border_style="blue",
+    ))
+
+    # ── Pillar Score Table
+    pillar_table = Table(title="Pillar Scores", box=box.ROUNDED)
+    pillar_table.add_column("#", style="dim", width=3)
+    pillar_table.add_column("Pillar", style="cyan")
+    pillar_table.add_column("Score", style="bold")
+    pillar_table.add_column("Grade", width=6)
+    pillar_table.add_column("Visual", width=24)
+
+    pillar_name_map = {
+        "1": "Crawlability & Indexability", "2": "Technical Performance",
+        "3": "Content Quality & Intent", "4": "Search Visibility",
+        "5": "Brand Representation", "6": "Authority Signals",
+    }
+
+    for i, p in enumerate(result.get("pillars", []), 1):
+        p_score = p["score"]
+        p_grade = _score_to_grade(p_score)
+        p_color = "green" if p_score >= 70 else "yellow" if p_score >= 50 else "red"
+        bar = "█" * max(1, p_score // 5) + "░" * (20 - max(1, p_score // 5))
+
+        pillar_table.add_row(
+            str(i),
+            p["pillar"],
+            f"[{p_color}]{p_score}/100[/{p_color}]",
+            f"[{p_color}]{p_grade}[/{p_color}]",
+            bar,
+        )
+
+    console.print(pillar_table)
+
+    # ── Detailed findings (all or single pillar)
+    target_pillars = result.get("pillars", [])
+    if pillar:
+        pillar_num = int(pillar)
+        if 1 <= pillar_num <= len(target_pillars):
+            target_pillars = [target_pillars[pillar_num - 1]]
+        else:
+            console.print(f"[yellow]Invalid pillar number. Showing all.[/yellow]")
+
+    for p in target_pillars:
+        p_score = p["score"]
+        p_color = "green" if p_score >= 70 else "yellow" if p_score >= 50 else "red"
+        console.print(f"\n[bold {p_color}]{p['pillar']} — {p_score}/100[/bold {p_color}]")
+        for finding in p["findings"]:
+            console.print(f"  {finding}")
+
+    # ── AI Recommendations
+    if result.get("ai_recommendations"):
+        console.print(Rule("AI AUDIT RECOMMENDATIONS", style="bold green"))
+        console.print(Markdown(result["ai_recommendations"]))
+
+    # ── Export
     if export:
         export_result(result, export)
+
+    if export_md:
+        report_md = format_audit_report(result)
+        try:
+            with open(export_md, 'w', encoding='utf-8') as f:
+                f.write(report_md)
+            console.print(f"[green]Markdown report exported to {export_md}[/green]")
+        except Exception as e:
+            console.print(f"[red]Export failed: {str(e)}[/red]")
+
+    if project_id:
+        async def save_deep_audit():
+            async with AsyncSessionLocal() as session:
+                proj = await session.get(Project, project_id)
+                if not proj:
+                    console.print(f"[red]Error: Project {project_id} not found.[/red]")
+                    return None
+                report = SEOReport(
+                    project_id=project_id,
+                    url=url,
+                    seo_score=int(result.get("overall_score", 0)),
+                    data=result,
+                    ai_recommendations=result.get("ai_recommendations", ""),
+                )
+                session.add(report)
+                await session.commit()
+                await session.refresh(report)
+                return report.id
+
+        rid = asyncio.run(save_deep_audit())
+        if rid:
+            console.print(f"[bold green]Deep audit saved to Project {project_id}, Report ID: {rid}[/bold green]")
+
 
 @cli.command()
 @click.argument('my_url')
@@ -1282,6 +1516,7 @@ def interactive():
             choices=[
                 "Mission Control (Dashboard)",
                 "Quick SEO Audit",
+                "Deep SEO Audit (Full Report)",
                 "Batch SEO Audit",
                 "Content Gap Analysis (Spy Mode)",
                 "Keyword Research",
@@ -1312,9 +1547,24 @@ def interactive():
             elif action == "Quick SEO Audit":
                 url = questionary.text("Enter the website URL to audit:").ask()
                 if url:
-                    do_schema = questionary.confirm("Generate JSON-LD Schema Markup?").ask()
+                    do_schema = questionary.confirm("Generate JSON-LD Schema Markup?", default=False).ask()
                     project_id = prompt_select_project("Audit")
-                    ctx.invoke(audit, url=url, export=None, schema=do_schema, project_id=project_id)
+                    ctx.invoke(audit, url=url, export=None, export_md=None,
+                               schema=do_schema, no_ai=False, project_id=project_id)
+
+            elif action == "Deep SEO Audit (Full Report)":
+                url = questionary.text("Enter the website URL for deep analysis:").ask()
+                if url:
+                    do_schema = questionary.confirm("Generate JSON-LD Schema Markup?", default=False).ask()
+                    export_md = questionary.text("Export Markdown report to file (leave empty to skip):").ask()
+                    export_json = questionary.text("Export JSON report to file (leave empty to skip):").ask()
+                    project_id = prompt_select_project("Deep Audit")
+                    ctx.invoke(deep_audit, url=url,
+                               pillar=None,
+                               export=export_json or None,
+                               export_md=export_md or None,
+                               no_ai=False,
+                               project_id=project_id)
 
             elif action == "Batch SEO Audit":
                 urls = questionary.text("Enter URLs (comma-separated):").ask()

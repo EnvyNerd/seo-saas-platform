@@ -44,11 +44,31 @@ def run_audit():
     header()
     print(f"\n  {Fore.GREEN}AUDIT RESULTS FOR: {url}")
     draw_line()
-    print(f"  {Fore.WHITE}SEO SCORE:        {Fore.YELLOW if result.get('seo_score',0) < 80 else Fore.GREEN}{result.get('seo_score')}/100")
-    print(f"  {Fore.WHITE}PAGE TITLE:       {Fore.CYAN}{result.get('title')}")
-    print(f"  {Fore.WHITE}META DESCRIPTION: {Fore.CYAN}{result.get('meta_description')[:50]}...")
-    print(f"  {Fore.WHITE}H1 TAGS:          {Fore.CYAN}{len(result.get('h1_tags', []))}")
-    print(f"  {Fore.WHITE}TOTAL LINKS:      {Fore.CYAN}{result.get('total_links')}")
+
+    if not result or result.get("error"):
+        error_message = result.get("error") if isinstance(result, dict) else "Unknown error"
+        if isinstance(error_message, str) and ("Executable doesn't exist" in error_message or "playwright install" in error_message.lower()):
+            error_message = (
+                f"{error_message} Please run `playwright install` to download the required browser binaries."
+            )
+        print(f"  {Fore.RED}Audit failed: {Fore.WHITE}{error_message}")
+        draw_line()
+        input(f"\n  {Fore.CYAN}Press Enter to return to menu...")
+        return
+
+    seo_score = result.get("seo_score", 0)
+    title = result.get("title") or "Missing"
+    meta_description = result.get("meta_description") or "Missing"
+    if len(meta_description) > 50:
+        meta_description = meta_description[:50] + "..."
+    h1_tags = result.get("h1_tags") or []
+    total_links = result.get("total_links", 0)
+
+    print(f"  {Fore.WHITE}SEO SCORE:        {Fore.YELLOW if seo_score < 80 else Fore.GREEN}{seo_score}/100")
+    print(f"  {Fore.WHITE}PAGE TITLE:       {Fore.CYAN}{title}")
+    print(f"  {Fore.WHITE}META DESCRIPTION: {Fore.CYAN}{meta_description}")
+    print(f"  {Fore.WHITE}H1 TAGS:          {Fore.CYAN}{len(h1_tags)}")
+    print(f"  {Fore.WHITE}TOTAL LINKS:      {Fore.CYAN}{total_links}")
     draw_line()
     input(f"\n  {Fore.CYAN}Press Enter to return to menu...")
 
