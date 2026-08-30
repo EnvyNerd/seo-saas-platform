@@ -20,7 +20,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
     } finally {
@@ -33,10 +33,10 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="flex flex-col items-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mb-4 shadow-lg shadow-purple-500/20">
-            <Globe className="text-white h-7 w-7" />
+          <div className="h-12 w-12 rounded-xl overflow-hidden shadow-lg shadow-purple-500/20">
+            <img src="/orbital-meridian.png" alt="VISIORAX PROJECT" className="h-12 w-12 object-cover" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">SEO AI Platform</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">VISIORAX PROJECT</h1>
           <p className="text-slate-400 mt-1">Sign in to your account</p>
         </div>
 
@@ -111,6 +111,12 @@ export default function Login() {
           <div className="mt-8 pt-8 border-t border-slate-800 text-center">
             <p className="text-sm text-slate-400">
               Don't have an account?{" "}
+              <Link to="/" className="font-bold text-white hover:text-purple-400 transition-colors">
+                Back to home
+              </Link>
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              Need an account?{" "}
               <Link to="/register" className="font-bold text-white hover:text-purple-400 transition-colors">
                 Create one for free
               </Link>

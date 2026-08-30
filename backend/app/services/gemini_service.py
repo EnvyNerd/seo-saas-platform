@@ -7,51 +7,93 @@ from openai import OpenAI
 base_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(base_dir, "..", "..", ".env")
 load_dotenv(dotenv_path=env_path)
-load_dotenv() # Also load from current working directory
+load_dotenv()  # Also load from current working directory
 
-# Gemini Config
-GEMINI_KEYS = [
-    os.getenv("GEMINI_API_KEY"),
-    os.getenv("GEMINI_API_KEY_BACKUP")
-]
-GEMINI_KEYS = [k for k in GEMINI_KEYS if k and not k.startswith("ADD_YOUR")]
-
-# OpenRouter Config
 OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+if OPENROUTER_KEY:
+    OPENROUTER_KEY = OPENROUTER_KEY.strip()
 if OPENROUTER_KEY and OPENROUTER_KEY.startswith("ADD_YOUR"):
     OPENROUTER_KEY = None
 
 current_gemini_index = 0
 
-def get_gemini_model():
-    """Configures and returns the Gemini model."""
-    global current_gemini_index
-    if not GEMINI_KEYS:
-        return None
-    
-    genai.configure(api_key=GEMINI_KEYS[current_gemini_index])
-    return genai.GenerativeModel("gemini-2.0-flash")
 
-def generate_with_openrouter(prompt: str) -> str:
-    """Fallback to OpenRouter (using deepseek or gpt-4o-mini)."""
+def get_openrouter_client():
     if not OPENROUTER_KEY:
         return None
-    
+    return OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
+
+
+def generate_with_openrouter(prompt: str) -> str:
+    """Simple OpenRouter generation helper for diagnostic checks."""
+    client = get_openrouter_client()
+    if not client:
+        return "OpenRouter Error: OPENROUTER_API_KEY missing or invalid."
+
     try:
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=OPENROUTER_KEY,
-        )
-        
         response = client.chat.completions.create(
-            model="google/gemini-2.0-flash-001", # You can change this to "deepseek/deepseek-chat" etc.
+            model="openai/gpt-4o-mini",
             messages=[
+                {"role": "system", "content": "You are a reliable AI assistant."},
                 {"role": "user", "content": prompt}
             ],
         )
         return response.choices[0].message.content
     except Exception as e:
         print(f"OpenRouter Error: {str(e)}")
+        return f"OpenRouter Error: {str(e)}"
+
+
+def generate_with_openrouter_model(prompt: str, model_id: str) -> str:
+    """OpenRouter generation helper for a specific model id."""
+    client = get_openrouter_client()
+    if not client:
+        return "OpenRouter Error: OPENROUTER_API_KEY missing or invalid."
+
+    try:
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[
+                {"role": "system", "content": "You are a professional SEO expert and content strategist."},
+                {"role": "user", "content": prompt}
+            ],
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenRouter Error ({model_id}): {str(e)}")
+        return f"OpenRouter Error ({model_id}): {str(e)}"
+
+
+def get_gemini_keys():
+    """Returns a list of valid Gemini API keys from environment."""
+    keys = [
+        os.getenv("GEMINI_API_KEY"),
+        os.getenv("GEMINI_API_KEY_BACKUP")
+    ]
+    valid_keys = [k.strip() for k in keys if k and not k.strip().startswith("ADD_YOUR")]
+    print(f"DEBUG: Found {len(valid_keys)} valid Gemini keys in environment.")
+    for i, k in enumerate(valid_keys):
+        masked = k[:6] + "..." + k[-4:] if len(k) > 10 else "***"
+        print(f"DEBUG: Key {i+1} masked: {masked}")
+    return valid_keys
+
+def get_gemini_model():
+    """Configures and returns the Gemini model."""
+    global current_gemini_index
+    keys = get_gemini_keys()
+    if not keys:
+        print("DEBUG: No Gemini keys found.")
+        return None
+    
+    current_gemini_index = current_gemini_index % len(keys)
+    target_key = keys[current_gemini_index]
+    print(f"DEBUG: Using Gemini Key Index {current_gemini_index} (Masked: {target_key[:4]}...)")
+    
+    try:
+        genai.configure(api_key=target_key)
+        return genai.GenerativeModel("gemini-2.0-flash")
+    except Exception as e:
+        print(f"DEBUG: Error configuring Gemini model: {str(e)}")
         return None
 
 def generate_content_with_fallback(prompt: str) -> str:
@@ -65,20 +107,24 @@ def generate_content_with_fallback(prompt: str) -> str:
     global current_gemini_index
     
     # Tier 1: Gemini
-    for _ in range(len(GEMINI_KEYS)):
+    keys = get_gemini_keys()
+    for i in range(len(keys)):
         try:
             model = get_gemini_model()
             if not model:
+                print("DEBUG: Gemini model instantiation failed.")
                 break
             
+            print(f"DEBUG: Attempting generation with Gemini (Attempt {i+1})")
             response = model.generate_content(prompt)
             return response.text
 
         except Exception as e:
             error_str = str(e).lower()
+            print(f"DEBUG: Gemini Exception: {str(e)}")
             if "429" in error_str or "quota" in error_str or "exhausted" in error_str:
-                print(f"Gemini API Key {current_gemini_index + 1} exhausted. Trying next Gemini key...")
-                current_gemini_index = (current_gemini_index + 1) % len(GEMINI_KEYS)
+                print(f"Gemini API Key {current_gemini_index + 1} reported exhaustion. Trying next Gemini key...")
+                current_gemini_index = (current_gemini_index + 1) % len(keys)
                 continue
             else:
                 print(f"Gemini AI Error: {str(e)}")
@@ -99,8 +145,22 @@ def generate_content_with_fallback(prompt: str) -> str:
     or_result = generate_with_openrouter(prompt)
     if or_result:
         return or_result
-    
-    return "AI Error: All providers (Gemini, OpenAI & OpenRouter) exhausted or failed."
+
+    # Tier 4: DeepSeek
+    print("OpenRouter failed. Attempting DeepSeek...")
+    try:
+        from .deepseek_service import generate_deepseek_fallback
+        deepseek_res = generate_deepseek_fallback(prompt)
+        if deepseek_res:
+            return deepseek_res
+    except Exception as e:
+        print(f"DeepSeek Fallback Error: {str(e)}")
+
+    return "AI Error: All providers (Gemini, OpenAI, OpenRouter & DeepSeek) exhausted or failed."
+
+
+GEMINI_KEYS = get_gemini_keys()
+
 
 def generate_seo_recommendations(data):
     """Specific wrapper for SEO recommendations."""

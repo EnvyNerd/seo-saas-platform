@@ -161,7 +161,9 @@ export default function ChatAssistant() {
                       {isUser ? (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       ) : (
-                        <ReactMarkdown className="markdown-content font-sans">{msg.content}</ReactMarkdown>
+                        <div className="markdown-content font-sans">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
                       )}
                     </div>
                   </Card>

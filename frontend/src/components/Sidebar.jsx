@@ -1,120 +1,55 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, Search, Globe, FileText, 
-  BarChart3, Sparkles, Target, MessageSquare, 
-  Activity, ChevronLeft, ChevronRight 
-} from "lucide-react";
-import { useState } from "react";
-import { Badge, Tooltip } from "./ui";
+import { BarChart3, Bot, FileText, Gauge, LayoutDashboard, Search, Settings, Sparkles, Target } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/strategy", icon: Sparkles, label: "SEO Strategy" },
-  { to: "/seo-audit", icon: Search, label: "SEO Audit" },
-  { to: "/keywords", icon: Globe, label: "Keyword Generator" },
-  { to: "/content", icon: FileText, label: "Content Generator" },
-  { to: "/competitors", icon: Target, label: "Competitors & Gap" },
-  { to: "/chat", icon: MessageSquare, label: "AI Chat Assistant" },
-  { to: "/analytics", icon: BarChart3, label: "Analytics" },
-  { to: "/settings", icon: Activity, label: "System Diagnostics" },
+  { to: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/app/seo-audit", label: "SEO Audit", icon: Search },
+  { to: "/app/audit-details", label: "Audit Details", icon: FileText },
+  { to: "/app/aeo-geo", label: "AEO / GEO", icon: Sparkles },
+  { to: "/app/keywords", label: "Keywords", icon: Target },
+  { to: "/app/content", label: "Content", icon: FileText },
+  { to: "/app/strategy", label: "Strategy", icon: Gauge },
+  { to: "/app/competitors", label: "Competitors", icon: BarChart3 },
+  { to: "/app/chat", label: "AI Assistant", icon: Bot },
+  { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 
-function Sidebar() {
+function Sidebar({ open = false, onNavigate }) {
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <aside 
-      className={`
-        flex shrink-0 flex-col bg-surface-secondary border-r border-border-light 
-        transition-all duration-300 ease-in-out relative
-        ${isCollapsed ? 'w-20' : 'w-64'}
-      `}
-    >
-      {/* Collapse Toggle */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-10 bg-surface-primary border border-border-light rounded-full p-1 text-text-muted hover:text-text-primary shadow-sm z-50 transition-colors"
-        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
-
-      {/* Brand Header */}
-      <div className={`
-        mb-8 px-4 py-6 border-b border-border-light transition-all duration-300 overflow-hidden
-        ${isCollapsed ? 'items-center text-center' : ''}
-      `}>
-        {!isCollapsed ? (
-          <div className="animate-fadeIn">
-            <p className="text-text-muted text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
-              Enterprise SEO
-            </p>
-            <h2 className="font-display text-lg font-bold text-text-primary tracking-tight leading-tight">
-              INSIGHTS <span className="text-slb-blue-500">SaaS</span>
-            </h2>
-          </div>
-        ) : (
-          <div className="flex justify-center animate-fadeIn">
-            <span className="font-display font-bold text-xl text-slb-blue-500">S</span>
-          </div>
-        )}
+    <aside className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 transform flex-col border-r border-border-light bg-surface-primary transition-transform duration-300 ease-out md:static md:z-auto md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <div className="p-5 border-b border-border-light">
+        <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">
+          VISIORAX PROJECT by RigVisionX Technology™
+        </p>
+        <p className="text-sm font-bold text-text-primary mt-1">Menu</p>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex flex-col gap-1 px-3 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar" aria-label="Main navigation">
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to;
-          
-          const linkContent = (
+      <nav className="flex-1 p-3 space-y-1">
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+          const active = location.pathname === to;
+
+          return (
             <Link
               key={to}
               to={to}
-              aria-current={isActive ? "page" : undefined}
-              className={`
-                group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
-                transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus
-                ${isActive
-                  ? "bg-slb-blue-500/10 text-slb-blue-500 shadow-sm"
-                  : "text-text-secondary hover:bg-surface-tertiary hover:text-text-primary active:scale-[0.98]"
-                }
-                ${isCollapsed ? 'justify-center px-0 mx-auto w-10' : ''}
-              `}
+              onClick={onNavigate}
+              className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-slb-blue-500/10 text-slb-blue-500"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+              }`}
             >
-              <Icon
-                size={20}
-                className={`shrink-0 transition-colors ${
-                  isActive ? "text-slb-blue-500" : "text-text-muted group-hover:text-text-primary"
-                }`}
-              />
-              {!isCollapsed && <span className="truncate animate-fadeIn">{label}</span>}
-              {!isCollapsed && isActive && (
-                <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-slb-blue-500 animate-pulse-dot" />
-              )}
+              <span className="flex items-center gap-3"><Icon size={16} />{label}</span>
             </Link>
           );
-
-          return isCollapsed ? (
-            <Tooltip key={to} content={label} position="right">
-              {linkContent}
-            </Tooltip>
-          ) : linkContent;
         })}
       </nav>
 
-      {/* Footer / Version */}
-      <div className={`
-        mt-auto p-4 border-t border-border-light transition-all duration-300
-        ${isCollapsed ? 'flex justify-center' : 'flex items-center justify-between'}
-      `}>
-        {!isCollapsed ? (
-          <div className="flex items-center justify-between w-full animate-fadeIn">
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">v2.0.4</span>
-            <Badge variant="info" size="sm">Stable</Badge>
-          </div>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted animate-fadeIn">v2</span>
-        )}
+      <div className="p-4 border-t border-border-light text-[11px] text-text-muted">
+        Use the pages above to run audits, generate keywords, create content, and review settings.
       </div>
     </aside>
   );

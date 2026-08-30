@@ -4,6 +4,7 @@ from app.agents.keyword_agent import run_keyword_agent
 from app.agents.competitor_agent import analyze_competitors
 from app.agents.content_agent import run_content_agent
 from app.agents.seo_audit_agent import audit_website
+from app.agents.deep_audit_agent import run_deep_audit_agent
 from app.models.seo_report import SEOReport
 
 class SEOOrchestrator:
@@ -85,6 +86,42 @@ class SEOOrchestrator:
             "keywords": results[0],
             "competitors": results[1]
         }
+
+    async def run_deep_audit(self, url: str, project_id: int = None, db: AsyncSession = None):
+        """
+        Run the 6-pillar deep SEO audit and optionally save to DB.
+        """
+        print(f"Orchestrator: Running deep 6-pillar audit for {url}")
+        deep_result = await asyncio.to_thread(run_deep_audit_agent, url, True)
+
+        full_result = {
+            "type": "deep_audit",
+            "url": url,
+            "overall_score": deep_result.get("overall_score", 0),
+            "overall_grade": deep_result.get("overall_grade", "?"),
+            "pillars": deep_result.get("pillars", []),
+            "ai_recommendations": deep_result.get("ai_recommendations", ""),
+            "metadata": deep_result.get("metadata", {}),
+            "technical_meta": deep_result.get("technical_meta", {}),
+        }
+
+        if db and project_id:
+            try:
+                report = SEOReport(
+                    project_id=project_id,
+                    url=url,
+                    seo_score=int(deep_result.get("overall_score", 0)),
+                    data=deep_result,
+                    ai_recommendations=deep_result.get("ai_recommendations", ""),
+                )
+                db.add(report)
+                await db.commit()
+                await db.refresh(report)
+                full_result["report_id"] = report.id
+            except Exception as e:
+                print(f"Orchestrator DB Error: {str(e)}")
+
+        return full_result
 
 # Singleton instance
 orchestrator = SEOOrchestrator()

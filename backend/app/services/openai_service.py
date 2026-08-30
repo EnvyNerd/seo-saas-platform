@@ -9,6 +9,8 @@ load_dotenv(dotenv_path=env_path)
 load_dotenv() # Also load from current working directory
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+if OPENAI_KEY:
+    OPENAI_KEY = OPENAI_KEY.strip()
 if OPENAI_KEY and OPENAI_KEY.startswith("ADD_YOUR"):
     OPENAI_KEY = None
 

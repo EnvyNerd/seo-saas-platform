@@ -21,7 +21,7 @@ export default function Register() {
 
     try {
       await register(email, password, fullName);
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
@@ -34,10 +34,10 @@ export default function Register() {
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="flex flex-col items-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
-            <Globe className="text-white h-7 w-7" />
+          <div className="h-12 w-12 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20">
+            <img src="/orbital-meridian.png" alt="VISIORAX PROJECT" className="h-12 w-12 object-cover" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Create Account</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">VISIORAX PROJECT</h1>
           <p className="text-slate-400 mt-1">Start your SEO optimization journey</p>
         </div>
 
@@ -130,6 +130,11 @@ export default function Register() {
               Already have an account?{" "}
               <Link to="/login" className="font-bold text-white hover:text-indigo-400 transition-colors">
                 Sign in
+              </Link>
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              <Link to="/" className="font-bold text-white hover:text-indigo-400 transition-colors">
+                Back to home
               </Link>
             </p>
           </div>

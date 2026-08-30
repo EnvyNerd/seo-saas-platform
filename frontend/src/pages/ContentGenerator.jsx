@@ -268,9 +268,9 @@ export default function ContentGenerator() {
                             </Button>
                           </div>
                           <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown className="markdown-content">
-                              {resultData.results["Gemini 2.0 Flash"]}
-                            </ReactMarkdown>
+                            <div className="markdown-content">
+                              <ReactMarkdown>{resultData.results["Gemini 2.0 Flash"]}</ReactMarkdown>
+                            </div>
                           </div>
                         </Card>
 
@@ -288,9 +288,9 @@ export default function ContentGenerator() {
                             </Button>
                           </div>
                           <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown className="markdown-content">
-                              {resultData.results["OpenRouter (DeepSeek/GPT)"]}
-                            </ReactMarkdown>
+                            <div className="markdown-content">
+                              <ReactMarkdown>{resultData.results["OpenRouter (DeepSeek/GPT)"]}</ReactMarkdown>
+                            </div>
                           </div>
                         </Card>
                       </div>
@@ -323,9 +323,9 @@ export default function ContentGenerator() {
                         </Button>
                       </div>
                       <div className="p-10 prose prose-slate dark:prose-invert max-w-none bg-surface-primary">
-                        <ReactMarkdown className="markdown-content font-sans leading-relaxed">
-                          {resultData.content}
-                        </ReactMarkdown>
+                        <div className="markdown-content font-sans leading-relaxed">
+                          <ReactMarkdown>{resultData.content}</ReactMarkdown>
+                        </div>
                       </div>
                     </Card>
                   )

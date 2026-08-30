@@ -2,16 +2,16 @@ import { Gauge, Link2, ImageOff, Heading1 } from "lucide-react";
 
 function MetricCard({ label, value, icon: Icon, accent }) {
   return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-lg shadow-black/20 backdrop-blur-sm transition-all hover:border-cyan-500/30">
+    <div className="min-w-0 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 shadow-lg shadow-black/20 backdrop-blur-sm transition-all hover:border-cyan-500/30 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        <span className="min-w-0 break-words text-[10px] font-medium uppercase tracking-wider text-slate-500 sm:text-xs">
           {label}
         </span>
         <div className={`rounded-lg border p-2 ${accent}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <p className="font-display text-3xl font-bold tabular-nums text-white">{value}</p>
+      <p className="font-display text-2xl font-bold tabular-nums text-white sm:text-3xl">{value}</p>
     </div>
   );
 }

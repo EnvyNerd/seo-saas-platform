@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Loader2, Sparkles, AlertCircle, Copy, CheckSquare, Layers, Tag, ExternalLink, Globe, FileText, Layout, Image as ImageIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, Loader2, Sparkles, AlertCircle, Copy, CheckSquare, Layers, Tag, ExternalLink, Globe, FileText, Layout, Image as ImageIcon, Calendar, ArrowUpRight } from "lucide-react";
 import api from "../api/axios";
 import { Card, Container, HeroSection, Button, Input, Badge, Alert, Tabs, Progress, CircularProgress } from "../components/ui";
 
@@ -59,6 +59,21 @@ function AuditMetric({ label, value, icon: Icon, description }) {
   );
 }
 
+function scoreLabel(score) {
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  return "D";
+}
+
+function scoreTone(score) {
+  if (score >= 80) return "text-green-500";
+  if (score >= 60) return "text-yellow-500";
+  return "text-red-500";
+}
+
+const HISTORY_KEY = "seo-audit-history";
+
 export default function SEOAudit() {
   const [auditMode, setAuditMode] = useState("single"); // "single" or "batch"
 
@@ -66,6 +81,13 @@ export default function SEOAudit() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [auditHistory, setAuditHistory] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [error, setError] = useState("");
 
   // AI recommendations & Schema state
@@ -83,11 +105,16 @@ export default function SEOAudit() {
   // Copy Feedback
   const [copiedKey, setCopiedKey] = useState("");
 
+  useEffect(() => {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(auditHistory));
+  }, [auditHistory]);
+
   const triggerCopy = (text, key) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(""), 2000);
   };
+
 
   const handleSingleAudit = async (e) => {
     e.preventDefault();
@@ -100,7 +127,12 @@ export default function SEOAudit() {
 
     try {
       const response = await api.get(`/seo/audit?url=${encodeURIComponent(url.trim())}`);
-      setResult(response.data);
+      const audit = response.data;
+      setResult(audit);
+      if (!audit.error) {
+        setAuditHistory((previous) => [audit, ...previous].slice(0, 10));
+        window.dispatchEvent(new Event("seo-audit-history-updated"));
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to execute SEO audit.");
     } finally {
@@ -172,7 +204,9 @@ export default function SEOAudit() {
         subtitle="Deep Playwright-powered analysis for on-page optimization, accessibility, and structural integrity."
       />
 
-      <Container className="py-8 relative z-10">
+      <Container size="xl" className="py-8 relative z-10">
+          <div className="grid gap-8 lg:grid-cols-3">
+            <main className="lg:col-span-2 space-y-10">
         {/* Toggle Mode Tabs */}
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-1.5 bg-surface-tertiary p-1.5 rounded-xl border border-border-light shadow-sm w-fit">
@@ -204,7 +238,7 @@ export default function SEOAudit() {
         {/* SINGLE PAGE AUDIT MODE */}
         {auditMode === "single" && (
           <div className="space-y-10 animate-fadeInUp">
-            <Card variant="elevated" className="p-8 bg-surface-primary max-w-3xl mx-auto border-t-4 border-t-slb-blue-500">
+            <Card variant="elevated" className="p-8 bg-surface-primary w-full border-t-4 border-t-slb-blue-500">
               <form onSubmit={handleSingleAudit} className="space-y-6">
                 <Input
                   label="Target Website URL"
@@ -234,26 +268,66 @@ export default function SEOAudit() {
             </Card>
 
             {error && (
-              <Alert variant="error" title="Audit Failed" className="max-w-3xl mx-auto" onClose={() => setError("")}>
+              <Alert variant="error" title="Audit Failed" className="w-full" onClose={() => setError("")}>
                 {error}
               </Alert>
             )}
 
             {result && (
               <div className="space-y-10 animate-fadeInUp">
-                {/* Result Header & Score */}
-                <div className="flex flex-col lg:flex-row gap-8 items-stretch">
-                  <div className="shrink-0 flex items-center justify-center">
-                    <ScoreBadge score={result.seo_score} />
+                <Card variant="elevated" className="p-6 md:p-8 bg-surface-primary border-border-light">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Latest Audit</p>
+                      <h2 className="mt-2 break-words text-2xl font-bold font-display text-text-primary">{result.title || "Website audit"}</h2>
+                      <a href={result.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex max-w-full items-center gap-2 truncate text-sm text-slb-blue-500 hover:text-slb-blue-400">
+                        {result.url}<ArrowUpRight size={14} />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-5">
+                      <CircularProgress value={result.seo_score ?? 0} size={96} strokeWidth={9} variant={result.seo_score >= 80 ? "success" : result.seo_score >= 50 ? "warning" : "error"} />
+                      <div>
+                        <p className="text-4xl font-bold font-display text-text-primary">{result.seo_score ?? "—"}</p>
+                        <p className={`text-sm font-bold ${scoreTone(result.seo_score ?? 0)}`}>Grade {scoreLabel(result.seo_score ?? 0)}</p>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="flex-1 grid gap-4 sm:grid-cols-2">
-                    <AuditMetric label="Analyzed URL" value={result.url} icon={Globe} />
-                    <AuditMetric label="Page Title" value={result.title} icon={FileText} />
-                    <AuditMetric label="Meta Description" value={result.meta_description} icon={Layout} />
-                    <AuditMetric label="Primary Headers (H1)" value={result.h1_tags?.join(" | ") || "None found"} icon={FileText} />
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <Button type="button" variant="secondary" size="sm" startIcon={Search} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>New Audit</Button>
+                    {result.screenshot_path && <a href={`${api.defaults.baseURL.split("/api")[0]}${result.screenshot_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-border-light px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary"><ImageIcon size={15} /> View proof</a>}
                   </div>
+                </Card>
+
+                <Card variant="outline" className="p-6 bg-surface-primary border-border-light">
+                  <div className="flex items-center gap-3 mb-5"><Globe size={18} className="text-slb-blue-500" /><h3 className="text-lg font-bold font-display">Website Details</h3></div>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <AuditMetric label="Industry" value={result.industry || "Not set"} />
+                    <AuditMetric label="Target Country" value={result.target_country || "Not set"} />
+                    <AuditMetric label="Target Language" value={result.target_language || "Not set"} />
+                    <AuditMetric label="Target Audience" value={result.target_audience || "Not set"} />
+                  </div>
+                  <p className="mt-5 border-t border-border-light pt-4 text-sm leading-relaxed text-text-secondary">{result.meta_description && result.meta_description !== "Missing" ? result.meta_description : "No meta description was found for this page."}</p>
+                </Card>
+
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                  {[ ["SEO", result.seo_score], ["AEO", result.aeo_score], ["GEO", result.geo_score], ["Tech", result.technical_score], ["Content", result.content_score], ["Perf", result.performance_score] ].map(([label, value]) => (
+                    <Card key={label} variant="outline" className="p-4 bg-surface-primary border-border-light">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{label}</p>
+                      <p className={`mt-2 text-2xl font-bold font-display ${value == null ? "text-text-muted" : scoreTone(value)}`}>{value ?? "—"}</p>
+                    </Card>
+                  ))}
                 </div>
+
+                <Card variant="outline" className="p-0 overflow-hidden bg-surface-primary border-border-light">
+                  <div className="flex items-center justify-between border-b border-border-light p-5"><h3 className="text-lg font-bold font-display">Audit History</h3><Calendar size={18} className="text-text-muted" /></div>
+                  <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-surface-secondary/50 text-[10px] uppercase tracking-wider text-text-muted"><tr><th className="px-5 py-3">Date</th><th className="px-5 py-3">Overall</th><th className="px-5 py-3">SEO</th><th className="px-5 py-3">Issues</th></tr></thead><tbody className="divide-y divide-border-light">{auditHistory.map((item, index) => <tr key={`${item.timestamp}-${index}`}><td className="px-5 py-3 text-text-secondary">{item.timestamp ? new Date(item.timestamp).toLocaleString() : "—"}</td><td className={`px-5 py-3 font-bold ${scoreTone(item.seo_score)}`}>{item.seo_score ?? "—"}</td><td className="px-5 py-3 text-text-secondary">{item.seo_score ?? "—"}</td><td className="px-5 py-3 text-text-secondary">{(item.issues || []).length || item.missing_alt_images || 0}</td></tr>)}</tbody></table></div>
+                </Card>
+
+                <Card variant="outline" className="p-6 bg-surface-primary border-border-light"><h3 className="text-lg font-bold font-display mb-5">Recent Issues</h3><div className="space-y-3">{[
+                  ...(result.issues || []),
+                  ...(result.missing_alt_images > 0 ? [{ severity: "high", title: `${result.missing_alt_images} images missing alt text`, category: "SEO" }] : []),
+                  ...(result.meta_description === "Missing" ? [{ severity: "high", title: "Missing meta description", category: "SEO" }] : []),
+                ].slice(0, 8).map((issue, index) => <div key={`${issue.title}-${index}`} className="flex items-center justify-between gap-4 border-b border-border-light py-3 last:border-0"><div className="flex min-w-0 items-center gap-3"><AlertCircle size={16} className={issue.severity === "high" ? "text-red-500" : "text-yellow-500"} /><span className="truncate text-sm font-medium text-text-primary">{issue.title || issue.message}</span></div><span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-muted">{issue.category || "SEO"}</span></div>)}{!result.issues?.length && !result.missing_alt_images && result.meta_description !== "Missing" && <p className="text-sm text-text-muted">No issues detected from the available audit checks.</p>}</div></Card>
 
                 {/* Technical Stats Grid */}
                 <div className="grid gap-6 sm:grid-cols-3">
@@ -545,6 +619,8 @@ export default function SEOAudit() {
             )}
           </div>
         )}
+          </main>
+        </div>
       </Container>
     </div>
   );

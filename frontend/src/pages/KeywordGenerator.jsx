@@ -172,9 +172,9 @@ export default function KeywordGenerator() {
                 </div>
                 
                 <div className="prose prose-slate dark:prose-invert max-w-none text-text-secondary leading-relaxed bg-surface-secondary/30 p-6 rounded-xl border border-border-light shadow-inner">
-                  <ReactMarkdown className="markdown-content font-sans">
-                    {results}
-                  </ReactMarkdown>
+                  <div className="markdown-content font-sans">
+                    <ReactMarkdown>{results}</ReactMarkdown>
+                  </div>
                 </div>
               </Card>
             )}
@@ -262,9 +262,9 @@ export default function KeywordGenerator() {
                       </Button>
                     </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-text-secondary leading-relaxed bg-surface-secondary/20 p-5 rounded-xl border border-border-light/50">
-                      <ReactMarkdown className="markdown-content font-sans">
-                        {item.keywords}
-                      </ReactMarkdown>
+                      <div className="markdown-content font-sans">
+                        <ReactMarkdown>{item.keywords}</ReactMarkdown>
+                      </div>
                     </div>
                   </Card>
                 ))}

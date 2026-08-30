@@ -50,6 +50,7 @@ pip install -r requirements.txt
 # Create .env file
 cat > .env << EOF
 GEMINI_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 DEBUG=True
 LOG_LEVEL=DEBUG
 EOF

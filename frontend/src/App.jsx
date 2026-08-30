@@ -1,10 +1,14 @@
-import AppRouter from "./router/AppRouter";
+import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import AppRouter from "./router/AppRouter";
+import "./styles/globals.css";
 
 function App() {
   return (
     <ThemeProvider>
-      <AppRouter />
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

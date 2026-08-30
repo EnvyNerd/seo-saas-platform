@@ -3,8 +3,10 @@ import { Sparkles, Loader2, Target, Globe, FileText, CheckCircle2, ChevronRight,
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
 import { Container, Section, Card, Button, Input, Badge, Alert, HeroSection } from "../components/ui";
+import { useNavigate } from "react-router-dom";
 
 export default function Strategy() {
+  const navigate = useNavigate();
   const [topic, setTopic] = useState("");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -109,7 +111,12 @@ export default function Strategy() {
                 <div className="text-xs text-text-secondary line-clamp-4 leading-relaxed italic">
                   <ReactMarkdown>{result.research.keywords.keywords_report}</ReactMarkdown>
                 </div>
-                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-slb-blue-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/app/keywords")}
+                  className="mt-4 p-0 h-auto text-slb-blue-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]"
+                >
                   Explore Keywords →
                 </Button>
               </Card>
@@ -124,7 +131,12 @@ export default function Strategy() {
                 <div className="text-xs text-text-secondary line-clamp-4 leading-relaxed italic">
                   <ReactMarkdown>{result.research.competitors.insights}</ReactMarkdown>
                 </div>
-                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-purple-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/app/competitors")}
+                  className="mt-4 p-0 h-auto text-purple-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]"
+                >
                   Analyze Rivals →
                 </Button>
               </Card>
@@ -147,7 +159,12 @@ export default function Strategy() {
                 ) : (
                   <p className="text-xs text-text-muted italic leading-relaxed">No URL provided for automated crawl analysis.</p>
                 )}
-                <Button variant="ghost" size="sm" className="mt-4 p-0 h-auto text-green-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/app/audit-details")}
+                  className="mt-4 p-0 h-auto text-green-500 hover:bg-transparent hover:underline font-bold uppercase tracking-widest text-[10px]"
+                >
                   View Full Audit →
                 </Button>
               </Card>
@@ -168,9 +185,9 @@ export default function Strategy() {
                 <Badge variant="success" size="lg" className="font-bold px-4">READY</Badge>
               </div>
               <div className="p-10 md:p-14 prose prose-slate dark:prose-invert max-w-none bg-surface-primary">
-                <ReactMarkdown className="markdown-content font-sans leading-relaxed">
-                  {result.output.content}
-                </ReactMarkdown>
+                <div className="markdown-content font-sans leading-relaxed">
+                  <ReactMarkdown>{result.output.content}</ReactMarkdown>
+                </div>
               </div>
             </Card>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, Loader2, Globe, TrendingUp, Sparkles, AlertCircle, Copy, CheckSquare, Search, Zap, BarChart3, Layout } from "lucide-react";
+import { Target, Loader2, Globe, TrendingUp, Sparkles, AlertCircle, Copy, CheckSquare, Search, Zap, BarChart3, Layout, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
 import { Container, Section, Card, Button, Input, Badge, Alert, HeroSection } from "../components/ui";
@@ -68,7 +68,8 @@ export default function Competitors() {
         subtitle="Discover organic search rivals, reverse-engineer their strategies, and identify critical content gaps to outrank the competition."
       />
 
-      <Container className="py-8 relative z-10">
+      <Container size="xl" className="py-8 relative z-10">
+        <div className="space-y-10">
         <div className="flex justify-center mb-10">
           <div className="flex items-center gap-1.5 bg-surface-tertiary p-1.5 rounded-xl border border-border-light shadow-sm w-fit">
             <button
@@ -224,9 +225,9 @@ export default function Competitors() {
                     </Button>
                   </div>
                   <div className="p-10 prose prose-slate dark:prose-invert max-w-none bg-surface-primary">
-                    <ReactMarkdown className="markdown-content font-sans leading-relaxed">
-                      {gapResult.gap_report}
-                    </ReactMarkdown>
+                    <div className="markdown-content font-sans leading-relaxed">
+                      <ReactMarkdown>{gapResult.gap_report}</ReactMarkdown>
+                    </div>
                   </div>
                 </Card>
               </div>
@@ -311,15 +312,16 @@ export default function Competitors() {
                     </div>
                   </div>
                   <div className="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed text-text-secondary">
-                    <ReactMarkdown className="markdown-content font-sans">
-                      {insightsResult.insights}
-                    </ReactMarkdown>
+                    <div className="markdown-content font-sans">
+                      <ReactMarkdown>{insightsResult.insights}</ReactMarkdown>
+                    </div>
                   </div>
                 </Card>
               </div>
             )}
           </div>
         )}
+        </div>
       </Container>
     </div>
   );
