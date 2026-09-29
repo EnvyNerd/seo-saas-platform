@@ -1,0 +1,13 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {"name": "OPENAI_API_KEY", "description": "OpenAI API key for AI features (chat, content generation, strategy). Get from https://platform.openai.com/api-keys", "requiredAtBoot": false},
+    {"name": "DEEPSEEK_API_KEY", "description": "DeepSeek API key for AI chat completions. Get from https://platform.deepseek.com/api_keys", "requiredAtBoot": false},
+    {"name": "GEMINI_API_KEY", "description": "Google Gemini API key for AI features. Get from https://aistudio.google.com/app/apikey", "requiredAtBoot": false},
+    {"name": "OPENROUTER_API_KEY", "description": "OpenRouter API key for AI model routing. Get from https://openrouter.ai/keys", "requiredAtBoot": false},
+    {"name": "SERPAPI_KEY", "description": "SerpAPI key for search engine results data. Get from https://serpapi.com/manage-api-key", "requiredAtBoot": false},
+    {"name": "PAGESPEED_API_KEY", "description": "Google PageSpeed Insights API key for performance metrics. Get from https://developers.google.com/speed/docs/insights/v5/get-started", "requiredAtBoot": false}
+  ]
+}
