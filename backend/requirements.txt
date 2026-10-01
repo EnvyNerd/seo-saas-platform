@@ -105,6 +105,6 @@ aiosqlite==0.20.0
 email-validator>=2.0.0
 rich==13.9.4
 questionary==2.1.0
-playwright==1.42.0
+playwright==1.63.0
 pytest-playwright==0.4.4
 

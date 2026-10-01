@@ -1,0 +1,11 @@
+FROM python:3.12
+
+WORKDIR /app
+
+# Install Python dependencies from the lockfile (pinned requirements.txt).
+# Source is bind-mounted at runtime, not baked in, so edits are live.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Source will be bind-mounted here at runtime.
+WORKDIR /app
